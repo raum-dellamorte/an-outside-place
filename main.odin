@@ -97,6 +97,21 @@ main :: proc() {
   }
   
   // Game Vars
+  action_list := [?]ActionUnit {
+    ActionUnit {
+      name = "No Action",
+    },
+    ActionUnit {
+      name = "Sword Attack",
+      base_damage = 10,
+      prep = 5, perform = 2, cool = 5
+    },
+    ActionUnit {
+      name = "Bite",
+      base_damage = 15,
+      prep = 5, perform = 3, cool = 8
+    },
+  }
   world: #soa[dynamic]WorldEnvSOA
   world = make_soa(#soa[dynamic]WorldEnvSOA, 0, 100)
   defer delete_soa(world)
@@ -104,21 +119,25 @@ main :: proc() {
     name = "The Player",
     is_player = true, color = rl.Color {200,100,120,255},
     is_alive = true, health = 100,
+    action_id = 1,
   })
   append_soa(&world, WorldEnvSOA{
     name = "Blue",
     is_mob = true, pos = {10.0, 0.0, -5.0}, color = rl.BLUE,
     is_alive = true, health = 30,
+    action_id = 2,
   })
   append_soa(&world, WorldEnvSOA{
     name = "Green",
     is_mob = true, pos = {4.0, 0.0, -3.0}, color = rl.GREEN,
     is_alive = true, health = 50,
+    action_id = 2,
   })
   append_soa(&world, WorldEnvSOA{
     name = "Purple",
     is_mob = true, pos = {-8.0, 0.0, 2.0}, color = rl.DARKPURPLE,
     is_alive = true, health = 70,
+    action_id = 2,
   })
   player := &world[0]
   in_combat := false
@@ -292,7 +311,8 @@ WorldEnvSOA :: struct {
   pos: rl.Vector3,
   prev_pos: rl.Vector3,
   health: u32,
-  // need list of actions/spells etc
+  action_id: u32, // id 0 should be a no-op, action list immutable
+  action_focus: u32,
 }
 
 ActionUnit :: struct {
