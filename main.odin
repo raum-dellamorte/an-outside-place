@@ -140,23 +140,12 @@ main :: proc() {
     action_id = 2,
   })
   player := &world[0]
-  in_combat := false
-  mob_combat := 0
+  combatants := make([dynamic]u32, 0, 50)
+  defer delete(combatants)
   player_speed : f32 = 0.2
   player_move_dist : f32 = 0
   frametime : f32
-  player_attack := ActionUnit {
-    name = "Sword Attack",
-    base_damage = 10,
-    prep = 5, perform = 2, cool = 5
-  }
-  mob_attack := ActionUnit {
-    name = "Bite",
-    base_damage = 15,
-    prep = 5, perform = 3, cool = 8
-  }
-  combat_timer := 0
-  
+
   // Game Loop
   for !rl.WindowShouldClose() {
     for &thing in world {
@@ -164,7 +153,7 @@ main :: proc() {
         thing.prev_pos = thing.pos
       }
     }
-    if !in_combat {
+    if len(&combatants) == 0 {
       // Move "Player"
       if rl.IsKeyDown(.W) || rl.IsKeyDown(.UP) {player.pos.z -= player_move_dist}
       if rl.IsKeyDown(.S) || rl.IsKeyDown(.DOWN) {player.pos.z += player_move_dist}
@@ -181,101 +170,117 @@ main :: proc() {
           if collision {
             // println("Player Collided With", mob.pos)
             player.pos = player.prev_pos
-            in_combat = true
-            mob_combat = i
-            break 
+            if player.is_alive {
+              mob.action_focus = 0 // 0 is the player atm
+              player.action_focus = u32(i)
+              append(&combatants, u32(0), u32(i))
+            }
+            break
           }
         }
       }
     } else { // In Combat!
-      mob := &world[mob_combat]
-      if combat_timer == 0 {
-        println("Player", player.name, "readies", player_attack.name)
-        println("Mob", mob.name, "readies", mob_attack.name)
-        combat_timer += 1
-      } else {
-        attacks := [?]^ActionUnit{ &player_attack, &mob_attack }
-        fight_loop: for attack, i in attacks {
+      {
+        fight_loop: for i in combatants {
+          entity := &world[i]
+          action_focus := &world[entity.action_focus]
+          if !entity.is_alive { continue fight_loop }
           stage_loop: for {
-            print("Who", i, "Stage", attack.timer.stage)
-            switch attack.timer.stage {
+            action := &action_list[entity.action_id]
+            print("Entity:", entity.name, " Stage:", entity.action_timer.stage)
+            switch entity.action_timer.stage {
             case .Prep:
-              if attack.prep == 0 {
-                attack.timer.stage = .BlockingPrep
-                // print("No Prep")
+              if action.prep != 0 && entity.action_timer.seconds == 0 {
+                println(player.name, "prepares", action.name, "against", action_focus.name)
+              } else if action.prep == 0 {
+                entity.action_timer.stage = .BlockingPrep
                 continue stage_loop
-              } else if attack.prep == attack.timer.seconds {
-                attack.timer.stage = .BlockingPrep
-                attack.timer.seconds = 0
+              } else if action.prep == entity.action_timer.seconds {
+                entity.action_timer.stage = .BlockingPrep
+                entity.action_timer.seconds = 0
+              } else {
+                print(entity.name, "is preparing", action.name, "for", action.prep - entity.action_timer.seconds, "more seconds. ")
               }
-              print("Who", i, "timer", attack.timer.seconds)
               break stage_loop
             case .BlockingPrep:
-              if attack.blocking_prep == 0 {
-                attack.timer.stage = .Perform
-                // print("No Blocking Prep")
+              if action.blocking_prep != 0 && entity.action_timer.seconds == 0 {
+                println(player.name, "focuses solely on", action.name, "against", action_focus.name)
+              } else if action.blocking_prep == 0 {
+                entity.action_timer.stage = .Perform
                 continue stage_loop
-              } else if attack.blocking_prep == attack.timer.seconds {
-                attack.timer.stage = .Perform
-                attack.timer.seconds = 0
-              } else { break stage_loop }
-            case .Perform:
-              // do stuff
-              if i == 0 { // player
-                println(player.name, "attacks", mob.name, "with", attack.name, "for", attack.base_damage, "damage.")
-                if mob.health <= attack.base_damage {
-                  mob.health = 0
-                  mob.is_alive = false
-                  println(mob.name, "has been defeated!")
-                  in_combat = false
-                  break fight_loop
-                } else {
-                  mob.health -= attack.base_damage / attack.perform
-                  println(mob.name, "has", mob.health, "health.")
-                }
-              } else { // mob
-                println(mob.name, "attacks", player.name, "with", attack.name, "for", attack.base_damage, "damage.")
-                if player.health <= attack.base_damage {
-                  player.health = 0
-                  player.is_alive = false
-                  println("YOU DIED!")
-                  in_combat = false
-                  break fight_loop
-                } else {
-                  player.health -= attack.base_damage / attack.perform
-                  println(player.name, "has", player.health, "health.")
-                }
+              } else if action.blocking_prep == entity.action_timer.seconds {
+                entity.action_timer.stage = .Perform
+                entity.action_timer.seconds = 0
+              } else {
+                print(entity.name, "focuses on", action.name, "for", action.blocking_prep - entity.action_timer.seconds, "more seconds. ")
               }
-              if attack.perform == 0 || attack.perform == attack.timer.seconds {
-                attack.timer.stage = .BlockingCooldown
-                attack.timer.seconds = 0
+              break stage_loop
+            case .Perform:
+              if entity.action_timer.seconds == 0 {
+                println(player.name, "uses", action.name, "against", action_focus.name)
+                println(entity.name, "attacks", action_focus.name, "for", action.base_damage, "damage over", action.perform,"seconds.")
+              }
+              if action_focus.health <= action.base_damage {
+                action_focus.health = 0
+                action_focus.is_alive = false
+                if action_focus.is_player {
+                  println("You were defeated by", entity.name)
+                  println("YOU DIED!")
+                } else {
+                  println(action_focus.name, "has been defeated!")
+                }
+                //
+                break fight_loop
+              } else {
+                entity.health -= action.base_damage / action.perform
+                println(action_focus.name, ": Health", action_focus.health)
+              }
+              if action.perform == 0 || action.perform == entity.action_timer.seconds {
+                entity.action_timer.stage = .BlockingCooldown
+                entity.action_timer.seconds = 0
               }
               break stage_loop
             case .BlockingCooldown:
-              if attack.blocking_cool == 0 {
-                attack.timer.stage = .Cooldown
+              if action.blocking_cool != 0 && entity.action_timer.seconds == 0 {
+                println(entity.name, "is paralyzed after using", action.name, "for", action.blocking_cool, "seconds.")
+              } else if action.blocking_cool == 0 {
+                entity.action_timer.stage = .Cooldown
                 continue stage_loop
-              } else if attack.blocking_cool == attack.timer.seconds {
-                attack.timer.stage = .Cooldown
-                attack.timer.seconds = 0
+              } else if action.blocking_cool == entity.action_timer.seconds {
+                println(entity.name, "recovers from paralysis induced by", action.name, ".")
+                entity.action_timer.stage = .Cooldown
+                entity.action_timer.seconds = 0
               }
               break stage_loop
             case .Cooldown:
-              if attack.cool == attack.timer.seconds {
-                attack.timer.stage = .Prep
-                attack.timer.seconds = 0
+              if action.cool != 0 && entity.action_timer.seconds == 0 {
+                println(entity.name, "cannot use", action.name, "for", action.cool, "seconds.")
+              } else if action.cool == entity.action_timer.seconds {
+                entity.action_timer.stage = .Prep
+                entity.action_timer.seconds = 0
               }
               break stage_loop
             }
           }
-          print(".")
-          attack.timer.seconds += 1
-          combat_timer += 1
+          print("::")
+          entity.action_timer.seconds += 1
         }
       }
-      if !mob.is_alive {
-        in_combat = false
-        mob_combat = 0
+      for i := 0; i < len(&combatants); i += 1 {
+        entity := &world[combatants[i]]
+        if !entity.is_alive {
+          if entity.is_player {
+            clear(&combatants)
+            break
+          } else {
+            ordered_remove(&combatants, i)
+            i -= 1
+          }
+        }
+        if len(&combatants) < 2 {
+          clear(&combatants)
+          break
+        }
       }
     }
     // Move Camera
@@ -313,10 +318,10 @@ WorldEnvSOA :: struct {
   health: u32,
   action_id: u32, // id 0 should be a no-op, action list immutable
   action_focus: u32,
+  action_timer: ActionTimer,
 }
 
 ActionUnit :: struct {
-  timer: ActionTimer,
   name: string,
   prep: u32,
   blocking_prep: u32,
@@ -340,4 +345,3 @@ ActionTimer :: struct {
   seconds: u32,
   stage: ActionStage,
 }
-
