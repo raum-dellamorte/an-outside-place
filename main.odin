@@ -180,7 +180,6 @@ main :: proc() {
         }
       }
     } else { // In Combat!
-      {
         fight_loop: for i in combatants {
           entity := &world[i]
           action_focus := &world[entity.action_focus]
@@ -265,7 +264,6 @@ main :: proc() {
           print("::")
           entity.action_timer.seconds += 1
         }
-      }
       for i := 0; i < len(&combatants); i += 1 {
         entity := &world[combatants[i]]
         if !entity.is_alive {
