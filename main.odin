@@ -190,7 +190,7 @@ main :: proc() {
           switch entity.action_timer.stage {
           case .Prep:
             if action.prep != 0 && entity.action_timer.seconds == 0 {
-              println(player.name, "prepares", action.name, "against", action_focus.name)
+              println(entity.name, "prepares", action.name, "against", action_focus.name)
             } else if action.prep == 0 {
               entity.action_timer.stage = .BlockingPrep
               continue stage_loop
@@ -203,7 +203,7 @@ main :: proc() {
             break stage_loop
           case .BlockingPrep:
             if action.blocking_prep != 0 && entity.action_timer.seconds == 0 {
-              println(player.name, "focuses solely on", action.name, "against", action_focus.name)
+              println(entity.name, "focuses solely on", action.name, "against", action_focus.name)
             } else if action.blocking_prep == 0 {
               entity.action_timer.stage = .Perform
               continue stage_loop
@@ -216,7 +216,7 @@ main :: proc() {
             break stage_loop
           case .Perform:
             if entity.action_timer.seconds == 0 {
-              println(player.name, "uses", action.name, "against", action_focus.name)
+              println(entity.name, "uses", action.name, "against", action_focus.name)
               println(entity.name, "attacks", action_focus.name, "for", action.base_damage, "damage over", action.perform,"seconds.")
             }
             if action_focus.health <= action.base_damage {
