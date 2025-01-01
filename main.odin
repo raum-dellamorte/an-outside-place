@@ -97,21 +97,6 @@ main :: proc() {
   }
   
   // Game Vars
-  action_list := [?]ActionUnit {
-    ActionUnit {
-      name = "No Action",
-    },
-    ActionUnit {
-      name = "Sword Attack",
-      base_damage = 10,
-      prep = 5, perform = 2, cool = 5
-    },
-    ActionUnit {
-      name = "Bite",
-      base_damage = 15,
-      prep = 5, perform = 3, cool = 8
-    },
-  }
   world: #soa[dynamic]WorldEnvSOA
   world = make_soa(#soa[dynamic]WorldEnvSOA, 0, 100)
   defer delete_soa(world)
@@ -180,106 +165,7 @@ main :: proc() {
         }
       }
     } else { // In Combat!
-      fight_loop: for i in combatants {
-        entity := &world[i]
-        action_focus := &world[entity.action_focus]
-        if !entity.is_alive { continue fight_loop }
-        stage_loop: for {
-          action := &action_list[entity.action_id]
-          print("Entity:", entity.name, " Stage:", entity.action_timer.stage)
-          switch entity.action_timer.stage {
-          case .Prep:
-            if action.prep != 0 && entity.action_timer.seconds == 0 {
-              println(entity.name, "prepares", action.name, "against", action_focus.name)
-            } else if action.prep == 0 {
-              entity.action_timer.stage = .BlockingPrep
-              continue stage_loop
-            } else if action.prep == entity.action_timer.seconds {
-              entity.action_timer.stage = .BlockingPrep
-              entity.action_timer.seconds = 0
-            } else {
-              print(entity.name, "is preparing", action.name, "for", action.prep - entity.action_timer.seconds, "more seconds. ")
-            }
-            break stage_loop
-          case .BlockingPrep:
-            if action.blocking_prep != 0 && entity.action_timer.seconds == 0 {
-              println(entity.name, "focuses solely on", action.name, "against", action_focus.name)
-            } else if action.blocking_prep == 0 {
-              entity.action_timer.stage = .Perform
-              continue stage_loop
-            } else if action.blocking_prep == entity.action_timer.seconds {
-              entity.action_timer.stage = .Perform
-              entity.action_timer.seconds = 0
-            } else {
-              print(entity.name, "focuses on", action.name, "for", action.blocking_prep - entity.action_timer.seconds, "more seconds. ")
-            }
-            break stage_loop
-          case .Perform:
-            if entity.action_timer.seconds == 0 {
-              println(entity.name, "uses", action.name, "against", action_focus.name)
-              println(entity.name, "attacks", action_focus.name, "for", action.base_damage, "damage over", action.perform,"seconds.")
-            }
-            if action_focus.health <= action.base_damage {
-              action_focus.health = 0
-              action_focus.is_alive = false
-              if action_focus.is_player {
-                println("You were defeated by", entity.name)
-                println("YOU DIED!")
-              } else {
-                println(action_focus.name, "has been defeated!")
-              }
-              //
-              break fight_loop
-            } else {
-              entity.health -= action.base_damage / action.perform
-              println(action_focus.name, ": Health", action_focus.health)
-            }
-            if action.perform == 0 || action.perform == entity.action_timer.seconds {
-              entity.action_timer.stage = .BlockingCooldown
-              entity.action_timer.seconds = 0
-            }
-            break stage_loop
-          case .BlockingCooldown:
-            if action.blocking_cool != 0 && entity.action_timer.seconds == 0 {
-              println(entity.name, "is paralyzed after using", action.name, "for", action.blocking_cool, "seconds.")
-            } else if action.blocking_cool == 0 {
-              entity.action_timer.stage = .Cooldown
-              continue stage_loop
-            } else if action.blocking_cool == entity.action_timer.seconds {
-              println(entity.name, "recovers from paralysis induced by", action.name, ".")
-              entity.action_timer.stage = .Cooldown
-              entity.action_timer.seconds = 0
-            }
-            break stage_loop
-          case .Cooldown:
-            if action.cool != 0 && entity.action_timer.seconds == 0 {
-              println(entity.name, "cannot use", action.name, "for", action.cool, "seconds.")
-            } else if action.cool == entity.action_timer.seconds {
-              entity.action_timer.stage = .Prep
-              entity.action_timer.seconds = 0
-            }
-            break stage_loop
-          }
-        }
-        print("::")
-        entity.action_timer.seconds += 1
-      }
-      for i := 0; i < len(&combatants); i += 1 {
-        entity := &world[combatants[i]]
-        if !entity.is_alive {
-          if entity.is_player {
-            clear(&combatants)
-            break
-          } else {
-            ordered_remove(&combatants, i)
-            i -= 1
-          }
-        }
-        if len(&combatants) < 2 {
-          clear(&combatants)
-          break
-        }
-      }
+      process_combat_tic(&world, &combatants)
     }
     // Move Camera
     move_cam(&camera, &player.pos)
@@ -297,9 +183,145 @@ main :: proc() {
   }
 }
 
+ActionList :: [?]ActionUnit {
+  ActionUnit {
+    name = "No Action",
+  },
+  ActionUnit {
+    name = "Sword Attack",
+    base_damage = 10,
+    prep = 5, perform = 2, cool = 5
+  },
+  ActionUnit {
+    name = "Bite",
+    base_damage = 15,
+    prep = 5, perform = 3, cool = 8
+  },
+}
+
 draw_world :: proc(world: #soa[]WorldEnvSOA) {
   for &thing in world {
     rl.DrawCubeV(thing.pos, {f32(1), f32(1), f32(1)}, thing.color)
+  }
+}
+
+process_combat_tic :: proc(world: ^#soa[dynamic]WorldEnvSOA, combatants: ^[dynamic]u32) { // In Combat!
+  action_list := ActionList
+  fight_loop: for i in combatants {
+    entity := &world[i]
+    action_focus := &world[entity.action_focus]
+    if !entity.is_alive { continue fight_loop }
+    stage_loop: for {
+      action := &action_list[entity.action_id]
+      print("Entity:", entity.name, " Stage:", entity.action_timer.stage)
+      switch entity.action_timer.stage {
+      case .Prep:
+        if action.prep != 0 && entity.action_timer.seconds == 0 {
+          println(entity.name, "prepares", action.name, "against", action_focus.name)
+        } else if action.prep == 0 {
+          entity.action_timer.stage = .BlockingPrep
+          continue stage_loop
+        } else if action.prep == entity.action_timer.seconds {
+          entity.action_timer.stage = .BlockingPrep
+          entity.action_timer.seconds = 0
+        } else {
+          print(
+            entity.name, "is preparing", action.name,
+            "for", action.prep - entity.action_timer.seconds, "more seconds. "
+          )
+        }
+        break stage_loop
+      case .BlockingPrep:
+        if action.blocking_prep != 0 && entity.action_timer.seconds == 0 {
+          println(entity.name, "focuses solely on", action.name, "against", action_focus.name)
+        } else if action.blocking_prep == 0 {
+          entity.action_timer.stage = .Perform
+          continue stage_loop
+        } else if action.blocking_prep == entity.action_timer.seconds {
+          entity.action_timer.stage = .Perform
+          entity.action_timer.seconds = 0
+        } else {
+          print(
+            entity.name, "focuses on", action.name, 
+            "for", action.blocking_prep - entity.action_timer.seconds, "more seconds. "
+          )
+        }
+        break stage_loop
+      case .Perform:
+        if entity.action_timer.seconds == 0 {
+          println(
+            entity.name, "uses", action.name,
+            "against", action_focus.name
+          )
+          println(
+            entity.name, "attacks", action_focus.name,
+            "for", action.base_damage, "damage over", action.perform,"seconds."
+          )
+        }
+        if action_focus.health <= action.base_damage {
+          action_focus.health = 0
+          action_focus.is_alive = false
+          if action_focus.is_player {
+            println("You were defeated by", entity.name)
+            println("YOU DIED!")
+          } else {
+            println(action_focus.name, "has been defeated!")
+          }
+          //
+          break fight_loop
+        } else {
+          entity.health -= action.base_damage / action.perform
+          println(action_focus.name, ": Health", action_focus.health)
+        }
+        if action.perform == 0 || action.perform == entity.action_timer.seconds {
+          entity.action_timer.stage = .BlockingCooldown
+          entity.action_timer.seconds = 0
+        }
+        break stage_loop
+      case .BlockingCooldown:
+        if action.blocking_cool != 0 && entity.action_timer.seconds == 0 {
+          println(
+            entity.name, "is paralyzed after using", action.name,
+            "for", action.blocking_cool, "seconds."
+          )
+        } else if action.blocking_cool == 0 {
+          entity.action_timer.stage = .Cooldown
+          continue stage_loop
+        } else if action.blocking_cool == entity.action_timer.seconds {
+          println(entity.name, "recovers from paralysis induced by", action.name, ".")
+          entity.action_timer.stage = .Cooldown
+          entity.action_timer.seconds = 0
+        }
+        break stage_loop
+      case .Cooldown:
+        if action.cool != 0 && entity.action_timer.seconds == 0 {
+          println(entity.name, "cannot use", action.name, "for", action.cool, "seconds.")
+        } else if action.cool == entity.action_timer.seconds {
+          entity.action_timer.stage = .Prep
+          entity.action_timer.seconds = 0
+        }
+        break stage_loop
+      }
+    }
+    print("::")
+    entity.action_timer.seconds += 1
+  }
+  // Bring out your dead
+  for i := 0; i < len(combatants); i += 1 {
+    entity := &world[combatants[i]]
+    if !entity.is_alive {
+      if entity.is_player {
+        clear(combatants)
+        break
+      } else {
+        ordered_remove(combatants, i)
+        i -= 1
+      }
+    }
+    if len(combatants) < 2 {
+      clear(combatants)
+      break
+    }
   }
 }
 
