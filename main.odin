@@ -99,30 +99,30 @@ main :: proc() {
   // Game Vars
   world: #soa[dynamic]WorldEnvSOA
   world = make_soa(#soa[dynamic]WorldEnvSOA, 0, 100)
-  defer delete_soa(world)
+  defer delete_world(world)
   append_soa(&world, WorldEnvSOA{
     name = "The Player",
     is_player = true, color = rl.Color {200,100,120,255},
     is_alive = true, health = 100,
-    action_id = 1,
+    actions = make_action_tracker_list({ { action_id = 1 } }),
   })
   append_soa(&world, WorldEnvSOA{
     name = "Blue",
     is_mob = true, pos = {10.0, 0.0, -5.0}, color = rl.BLUE,
     is_alive = true, health = 30,
-    action_id = 2,
+    actions = make_action_tracker_list({ { action_id = 2 } }),
   })
   append_soa(&world, WorldEnvSOA{
     name = "Green",
     is_mob = true, pos = {4.0, 0.0, -3.0}, color = rl.GREEN,
     is_alive = true, health = 50,
-    action_id = 2,
+    actions = make_action_tracker_list({ { action_id = 2 } }),
   })
   append_soa(&world, WorldEnvSOA{
     name = "Purple",
     is_mob = true, pos = {-8.0, 0.0, 2.0}, color = rl.DARKPURPLE,
     is_alive = true, health = 70,
-    action_id = 2,
+    actions = make_action_tracker_list({ { action_id = 2 } }),
   })
   player := &world[0]
   combatants := make([dynamic]u32, 0, 50)
@@ -156,8 +156,8 @@ main :: proc() {
             // println("Player Collided With", mob.pos)
             player.pos = player.prev_pos
             if player.is_alive {
-              mob.action_focus = 0 // 0 is the player atm
-              player.action_focus = u32(i)
+              mob.actions[0].action_focus = 0 // 0 is the player atm
+              player.actions[0].action_focus = u32(i)
               append(&combatants, u32(0), u32(i))
             }
             break
@@ -190,7 +190,7 @@ ActionList :: [?]ActionUnit {
   ActionUnit {
     name = "Sword Attack",
     base_damage = 10,
-    prep = 5, perform = 2, cool = 5
+    prep = 3, perform = 2, cool = 2
   },
   ActionUnit {
     name = "Bite",
@@ -209,24 +209,24 @@ process_combat_tic :: proc(world: ^#soa[dynamic]WorldEnvSOA, combatants: ^[dynam
   action_list := ActionList
   fight_loop: for i in combatants {
     entity := &world[i]
-    action_focus := &world[entity.action_focus]
+    action_focus := &world[entity.actions[0].action_focus]
     if !entity.is_alive { continue fight_loop }
     stage_loop: for {
-      action := &action_list[entity.action_id]
+      action := &action_list[entity.actions[0].action_id]
       // print("Entity:", entity.name, " Stage:", entity.action_timer.stage)
-      switch entity.action_timer.stage {
+      switch entity.actions[0].action_timer.stage {
       case .Prep:
-        if action.prep != 0 && entity.action_timer.seconds == 0 {
+        if action.prep != 0 && entity.actions[0].action_timer.seconds == 0 {
           println(entity.name, "prepares", action.name, "against", action_focus.name)
-          entity.action_timer.seconds += 1
+          entity.actions[0].action_timer.seconds += 1
         } else if action.prep == 0 {
-          entity.action_timer.stage = .BlockingPrep
+          entity.actions[0].action_timer.stage = .BlockingPrep
           continue stage_loop
-        } else if action.prep == entity.action_timer.seconds {
-          entity.action_timer.stage = .BlockingPrep
-          entity.action_timer.seconds = 0
+        } else if action.prep == entity.actions[0].action_timer.seconds {
+          entity.actions[0].action_timer.stage = .BlockingPrep
+          entity.actions[0].action_timer.seconds = 0
         } else {
-          entity.action_timer.seconds += 1
+          entity.actions[0].action_timer.seconds += 1
           // print(
           //   ":", entity.name, "is preparing", action.name,
           //   "for", action.prep - entity.action_timer.seconds, "more seconds:"
@@ -234,22 +234,22 @@ process_combat_tic :: proc(world: ^#soa[dynamic]WorldEnvSOA, combatants: ^[dynam
         }
         break stage_loop
       case .BlockingPrep:
-        if action.blocking_prep != 0 && entity.action_timer.seconds == 0 {
+        if action.blocking_prep != 0 && entity.actions[0].action_timer.seconds == 0 {
           entity.is_doing_blocking_prep = true
           println(
             entity.name, "focuses solely on", action.name,
             "against", action_focus.name
           )
-          entity.action_timer.seconds += 1
+          entity.actions[0].action_timer.seconds += 1
         } else if action.blocking_prep == 0 {
-          entity.action_timer.stage = .Perform
+          entity.actions[0].action_timer.stage = .Perform
           continue stage_loop
-        } else if action.blocking_prep == entity.action_timer.seconds {
+        } else if action.blocking_prep == entity.actions[0].action_timer.seconds {
           entity.is_doing_blocking_prep = false
-          entity.action_timer.stage = .Perform
-          entity.action_timer.seconds = 0
+          entity.actions[0].action_timer.stage = .Perform
+          entity.actions[0].action_timer.seconds = 0
         } else {
-          entity.action_timer.seconds += 1
+          entity.actions[0].action_timer.seconds += 1
           // print(
           //   ":", entity.name, "focuses on", action.name, 
           //   "for", action.blocking_prep - entity.action_timer.seconds, "more seconds:"
@@ -257,7 +257,7 @@ process_combat_tic :: proc(world: ^#soa[dynamic]WorldEnvSOA, combatants: ^[dynam
         }
         break stage_loop
       case .Perform:
-        if action.perform != 0 && entity.action_timer.seconds == 0 {
+        if action.perform != 0 && entity.actions[0].action_timer.seconds == 0 {
           println(
             entity.name, "uses", action.name,
             "against", action_focus.name
@@ -267,13 +267,13 @@ process_combat_tic :: proc(world: ^#soa[dynamic]WorldEnvSOA, combatants: ^[dynam
             "for", action.base_damage, "damage over", action.perform,"seconds."
           )
         }
-        if action.perform == entity.action_timer.seconds {
-          entity.action_timer.stage = .BlockingCooldown
-          entity.action_timer.seconds = 0
+        if action.perform == entity.actions[0].action_timer.seconds {
+          entity.actions[0].action_timer.stage = .BlockingCooldown
+          entity.actions[0].action_timer.seconds = 0
           continue stage_loop
         }
         damage_this_tic := action.base_damage / action.perform
-        if action.perform - entity.action_timer.seconds == 1 {
+        if action.perform - entity.actions[0].action_timer.seconds == 1 {
           damage_this_tic += (action.base_damage % damage_this_tic)
         }
         if action_focus.health <= damage_this_tic {
@@ -297,40 +297,40 @@ process_combat_tic :: proc(world: ^#soa[dynamic]WorldEnvSOA, combatants: ^[dynam
             action_focus.name,"Health:", action_focus.health, ":"
           )
         }
-        entity.action_timer.seconds += 1
+        entity.actions[0].action_timer.seconds += 1
         break stage_loop
       case .BlockingCooldown:
-        if action.blocking_cool != 0 && entity.action_timer.seconds == 0 {
+        if action.blocking_cool != 0 && entity.actions[0].action_timer.seconds == 0 {
           entity.is_doing_blocking_cool = true
           println(
             entity.name, "is paralyzed after using", action.name,
             "for", action.blocking_cool, "seconds."
           )
-          entity.action_timer.seconds += 1
+          entity.actions[0].action_timer.seconds += 1
         } else if action.blocking_cool == 0 {
-          entity.action_timer.stage = .Cooldown
+          entity.actions[0].action_timer.stage = .Cooldown
           continue stage_loop
-        } else if action.blocking_cool == entity.action_timer.seconds {
+        } else if action.blocking_cool == entity.actions[0].action_timer.seconds {
           println(entity.name, "recovers from paralysis induced by", action.name, ".")
           entity.is_doing_blocking_cool = false
-          entity.action_timer.stage = .Cooldown
-          entity.action_timer.seconds = 0
+          entity.actions[0].action_timer.stage = .Cooldown
+          entity.actions[0].action_timer.seconds = 0
         } else {
-          entity.action_timer.seconds += 1
+          entity.actions[0].action_timer.seconds += 1
         }
         break stage_loop
       case .Cooldown:
-        if action.cool != 0 && entity.action_timer.seconds == 0 {
+        if action.cool != 0 && entity.actions[0].action_timer.seconds == 0 {
           println(
             entity.name, "cannot use", action.name,
             "for", action.cool, "seconds."
           )
-          entity.action_timer.seconds += 1
-        } else if action.cool == entity.action_timer.seconds {
-          entity.action_timer.stage = .Prep
-          entity.action_timer.seconds = 0
+          entity.actions[0].action_timer.seconds += 1
+        } else if action.cool == entity.actions[0].action_timer.seconds {
+          entity.actions[0].action_timer.stage = .Prep
+          entity.actions[0].action_timer.seconds = 0
         } else {
-          entity.action_timer.seconds += 1
+          entity.actions[0].action_timer.seconds += 1
         }
         break stage_loop
       }
@@ -369,9 +369,33 @@ WorldEnvSOA :: struct {
   pos: rl.Vector3,
   prev_pos: rl.Vector3,
   health: u32,
+  actions: ^[dynamic]ActionTracker,
+}
+
+delete_world :: proc(world: #soa[dynamic]WorldEnvSOA) {
+  for &thing in world {
+    if thing.actions != nil {
+      actions := thing.actions^
+      thing.actions = nil
+      delete(actions)
+    }
+  }
+  delete_soa(world)
+}
+
+ActionTracker :: struct {
   action_id: u32, // id 0 should be a no-op, action list immutable
   action_focus: u32,
   action_timer: ActionTimer,
+}
+
+make_action_tracker_list :: proc(action_trackers: []ActionTracker) -> ^[dynamic]ActionTracker {
+  out := new([dynamic]ActionTracker)
+  out^ = make([dynamic]ActionTracker,0,6)
+  for at in action_trackers {
+    append(out, at)
+  }
+  return out
 }
 
 ActionUnit :: struct {
