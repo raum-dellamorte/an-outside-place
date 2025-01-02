@@ -210,7 +210,10 @@ process_combat_tic :: proc(world: ^#soa[dynamic]WorldEnvSOA, combatants: ^[dynam
   fight_loop: for i in combatants {
     entity := &world[i]
     if !entity.is_alive { continue fight_loop }
-    for &action_tracker in entity.actions {
+    action_loop: for &action_tracker in entity.actions {
+      if entity.action_is_blocking != nil && entity.action_is_blocking != action_tracker.id {
+        continue action_loop
+      }
       action_focus := &world[action_tracker.focus]
       stage_loop: for {
         action := &action_list[action_tracker.id]
@@ -259,6 +262,7 @@ process_combat_tic :: proc(world: ^#soa[dynamic]WorldEnvSOA, combatants: ^[dynam
           break stage_loop
         case .Perform:
           if action.perform != 0 && action_tracker.timer.seconds == 0 {
+            entity.action_is_blocking = action_tracker.id
             println(
               entity.name, "uses", action.name,
               "against", action_focus.name
@@ -269,6 +273,7 @@ process_combat_tic :: proc(world: ^#soa[dynamic]WorldEnvSOA, combatants: ^[dynam
             )
           }
           if action.perform == action_tracker.timer.seconds {
+            entity.action_is_blocking = nil
             action_tracker.timer.stage = .BlockingCooldown
             action_tracker.timer.seconds = 0
             continue stage_loop
