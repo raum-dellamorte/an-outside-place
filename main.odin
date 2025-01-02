@@ -236,7 +236,7 @@ process_combat_tic :: proc(world: ^#soa[dynamic]WorldEnvSOA, combatants: ^[dynam
           break stage_loop
         case .BlockingPrep:
           if action.blocking_prep != 0 && action_tracker.timer.seconds == 0 {
-            entity.is_doing_blocking_prep = true
+            entity.action_is_blocking = action_tracker.id
             println(
               entity.name, "focuses solely on", action.name,
               "against", action_focus.name
@@ -246,7 +246,7 @@ process_combat_tic :: proc(world: ^#soa[dynamic]WorldEnvSOA, combatants: ^[dynam
             action_tracker.timer.stage = .Perform
             continue stage_loop
           } else if action.blocking_prep == action_tracker.timer.seconds {
-            entity.is_doing_blocking_prep = false
+            entity.action_is_blocking = nil
             action_tracker.timer.stage = .Perform
             action_tracker.timer.seconds = 0
           } else {
@@ -302,7 +302,7 @@ process_combat_tic :: proc(world: ^#soa[dynamic]WorldEnvSOA, combatants: ^[dynam
           break stage_loop
         case .BlockingCooldown:
           if action.blocking_cool != 0 && action_tracker.timer.seconds == 0 {
-            entity.is_doing_blocking_cool = true
+            entity.action_is_blocking = action_tracker.id
             println(
               entity.name, "is paralyzed after using", action.name,
               "for", action.blocking_cool, "seconds."
@@ -313,7 +313,7 @@ process_combat_tic :: proc(world: ^#soa[dynamic]WorldEnvSOA, combatants: ^[dynam
             continue stage_loop
           } else if action.blocking_cool == action_tracker.timer.seconds {
             println(entity.name, "recovers from paralysis induced by", action.name, ".")
-            entity.is_doing_blocking_cool = false
+            entity.action_is_blocking = nil
             action_tracker.timer.stage = .Cooldown
             action_tracker.timer.seconds = 0
           } else {
@@ -363,9 +363,7 @@ WorldEnvSOA :: struct {
   is_object: bool,
   is_platform: bool,
   is_alive: bool,
-  is_doing_blocking_prep: bool,
-  is_doing_perform: bool,
-  is_doing_blocking_cool: bool,
+  action_is_blocking: Maybe(u32),
   name: string,
   color: rl.Color,
   pos: rl.Vector3,
