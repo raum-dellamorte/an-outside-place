@@ -104,25 +104,25 @@ main :: proc() {
     name = "The Player",
     is_player = true, color = rl.Color {200,100,120,255},
     is_alive = true, health = 100,
-    actions = make_action_tracker_list({ { action_id = 1 } }),
+    actions = make_action_tracker_list({ { id = 1 } }),
   })
   append_soa(&world, WorldEnvSOA{
     name = "Blue",
     is_mob = true, pos = {10.0, 0.0, -5.0}, color = rl.BLUE,
     is_alive = true, health = 30,
-    actions = make_action_tracker_list({ { action_id = 2 } }),
+    actions = make_action_tracker_list({ { id = 2 } }),
   })
   append_soa(&world, WorldEnvSOA{
     name = "Green",
     is_mob = true, pos = {4.0, 0.0, -3.0}, color = rl.GREEN,
     is_alive = true, health = 50,
-    actions = make_action_tracker_list({ { action_id = 2 } }),
+    actions = make_action_tracker_list({ { id = 2 } }),
   })
   append_soa(&world, WorldEnvSOA{
     name = "Purple",
     is_mob = true, pos = {-8.0, 0.0, 2.0}, color = rl.DARKPURPLE,
     is_alive = true, health = 70,
-    actions = make_action_tracker_list({ { action_id = 2 } }),
+    actions = make_action_tracker_list({ { id = 2 } }),
   })
   player := &world[0]
   combatants := make([dynamic]u32, 0, 50)
@@ -156,8 +156,8 @@ main :: proc() {
             // println("Player Collided With", mob.pos)
             player.pos = player.prev_pos
             if player.is_alive {
-              mob.actions[0].action_focus = 0 // 0 is the player atm
-              player.actions[0].action_focus = u32(i)
+              mob.actions[0].focus = 0 // 0 is the player atm
+              player.actions[0].focus = u32(i)
               append(&combatants, u32(0), u32(i))
             }
             break
@@ -209,130 +209,132 @@ process_combat_tic :: proc(world: ^#soa[dynamic]WorldEnvSOA, combatants: ^[dynam
   action_list := ActionList
   fight_loop: for i in combatants {
     entity := &world[i]
-    action_focus := &world[entity.actions[0].action_focus]
     if !entity.is_alive { continue fight_loop }
-    stage_loop: for {
-      action := &action_list[entity.actions[0].action_id]
-      // print("Entity:", entity.name, " Stage:", entity.action_timer.stage)
-      switch entity.actions[0].action_timer.stage {
-      case .Prep:
-        if action.prep != 0 && entity.actions[0].action_timer.seconds == 0 {
-          println(entity.name, "prepares", action.name, "against", action_focus.name)
-          entity.actions[0].action_timer.seconds += 1
-        } else if action.prep == 0 {
-          entity.actions[0].action_timer.stage = .BlockingPrep
-          continue stage_loop
-        } else if action.prep == entity.actions[0].action_timer.seconds {
-          entity.actions[0].action_timer.stage = .BlockingPrep
-          entity.actions[0].action_timer.seconds = 0
-        } else {
-          entity.actions[0].action_timer.seconds += 1
-          // print(
-          //   ":", entity.name, "is preparing", action.name,
-          //   "for", action.prep - entity.action_timer.seconds, "more seconds:"
-          // )
-        }
-        break stage_loop
-      case .BlockingPrep:
-        if action.blocking_prep != 0 && entity.actions[0].action_timer.seconds == 0 {
-          entity.is_doing_blocking_prep = true
-          println(
-            entity.name, "focuses solely on", action.name,
-            "against", action_focus.name
-          )
-          entity.actions[0].action_timer.seconds += 1
-        } else if action.blocking_prep == 0 {
-          entity.actions[0].action_timer.stage = .Perform
-          continue stage_loop
-        } else if action.blocking_prep == entity.actions[0].action_timer.seconds {
-          entity.is_doing_blocking_prep = false
-          entity.actions[0].action_timer.stage = .Perform
-          entity.actions[0].action_timer.seconds = 0
-        } else {
-          entity.actions[0].action_timer.seconds += 1
-          // print(
-          //   ":", entity.name, "focuses on", action.name, 
-          //   "for", action.blocking_prep - entity.action_timer.seconds, "more seconds:"
-          // )
-        }
-        break stage_loop
-      case .Perform:
-        if action.perform != 0 && entity.actions[0].action_timer.seconds == 0 {
-          println(
-            entity.name, "uses", action.name,
-            "against", action_focus.name
-          )
-          println(
-            entity.name, "attacks", action_focus.name,
-            "for", action.base_damage, "damage over", action.perform,"seconds."
-          )
-        }
-        if action.perform == entity.actions[0].action_timer.seconds {
-          entity.actions[0].action_timer.stage = .BlockingCooldown
-          entity.actions[0].action_timer.seconds = 0
-          continue stage_loop
-        }
-        damage_this_tic := action.base_damage / action.perform
-        if action.perform - entity.actions[0].action_timer.seconds == 1 {
-          damage_this_tic += (action.base_damage % damage_this_tic)
-        }
-        if action_focus.health <= damage_this_tic {
-          action_focus.health = 0
-          action_focus.is_alive = false
-          if action_focus.is_player {
-            println("You were defeated by", entity.name)
-            println("YOU DIED!")
+    for &action_tracker in entity.actions {
+      action_focus := &world[action_tracker.focus]
+      stage_loop: for {
+        action := &action_list[action_tracker.id]
+        // print("Entity:", entity.name, " Stage:", entity.action_timer.stage)
+        switch action_tracker.timer.stage {
+        case .Prep:
+          if action.prep != 0 && action_tracker.timer.seconds == 0 {
+            println(entity.name, "prepares", action.name, "against", action_focus.name)
+            action_tracker.timer.seconds += 1
+          } else if action.prep == 0 {
+            action_tracker.timer.stage = .BlockingPrep
+            continue stage_loop
+          } else if action.prep == action_tracker.timer.seconds {
+            action_tracker.timer.stage = .BlockingPrep
+            action_tracker.timer.seconds = 0
           } else {
-            println(action_focus.name, "has been defeated by", entity.name,"!")
+            action_tracker.timer.seconds += 1
+            // print(
+            //   ":", entity.name, "is preparing", action.name,
+            //   "for", action.prep - entity.action_timer.seconds, "more seconds:"
+            // )
           }
-          //
-          // entity.action_timer.seconds = 0 // maybe???
-          break fight_loop
-        } else {
-          action_focus.health -= damage_this_tic
-          println(
-            action_focus.name,
-            "took", damage_this_tic,"damage.")
-          println(
-            action_focus.name,"Health:", action_focus.health, ":"
-          )
+          break stage_loop
+        case .BlockingPrep:
+          if action.blocking_prep != 0 && action_tracker.timer.seconds == 0 {
+            entity.is_doing_blocking_prep = true
+            println(
+              entity.name, "focuses solely on", action.name,
+              "against", action_focus.name
+            )
+            action_tracker.timer.seconds += 1
+          } else if action.blocking_prep == 0 {
+            action_tracker.timer.stage = .Perform
+            continue stage_loop
+          } else if action.blocking_prep == action_tracker.timer.seconds {
+            entity.is_doing_blocking_prep = false
+            action_tracker.timer.stage = .Perform
+            action_tracker.timer.seconds = 0
+          } else {
+            action_tracker.timer.seconds += 1
+            // print(
+            //   ":", entity.name, "focuses on", action.name, 
+            //   "for", action.blocking_prep - entity.action_timer.seconds, "more seconds:"
+            // )
+          }
+          break stage_loop
+        case .Perform:
+          if action.perform != 0 && action_tracker.timer.seconds == 0 {
+            println(
+              entity.name, "uses", action.name,
+              "against", action_focus.name
+            )
+            println(
+              entity.name, "attacks", action_focus.name,
+              "for", action.base_damage, "damage over", action.perform,"seconds."
+            )
+          }
+          if action.perform == action_tracker.timer.seconds {
+            action_tracker.timer.stage = .BlockingCooldown
+            action_tracker.timer.seconds = 0
+            continue stage_loop
+          }
+          damage_this_tic := action.base_damage / action.perform
+          if action.perform - action_tracker.timer.seconds == 1 {
+            damage_this_tic += (action.base_damage % damage_this_tic)
+          }
+          if action_focus.health <= damage_this_tic {
+            action_focus.health = 0
+            action_focus.is_alive = false
+            if action_focus.is_player {
+              println("You were defeated by", entity.name)
+              println("YOU DIED!")
+            } else {
+              println(action_focus.name, "has been defeated by", entity.name,"!")
+            }
+            //
+            // entity.action_timer.seconds = 0 // maybe???
+            break fight_loop
+          } else {
+            action_focus.health -= damage_this_tic
+            println(
+              action_focus.name,
+              "took", damage_this_tic,"damage.")
+            println(
+              action_focus.name,"Health:", action_focus.health, ":"
+            )
+          }
+          action_tracker.timer.seconds += 1
+          break stage_loop
+        case .BlockingCooldown:
+          if action.blocking_cool != 0 && action_tracker.timer.seconds == 0 {
+            entity.is_doing_blocking_cool = true
+            println(
+              entity.name, "is paralyzed after using", action.name,
+              "for", action.blocking_cool, "seconds."
+            )
+            action_tracker.timer.seconds += 1
+          } else if action.blocking_cool == 0 {
+            action_tracker.timer.stage = .Cooldown
+            continue stage_loop
+          } else if action.blocking_cool == action_tracker.timer.seconds {
+            println(entity.name, "recovers from paralysis induced by", action.name, ".")
+            entity.is_doing_blocking_cool = false
+            action_tracker.timer.stage = .Cooldown
+            action_tracker.timer.seconds = 0
+          } else {
+            action_tracker.timer.seconds += 1
+          }
+          break stage_loop
+        case .Cooldown:
+          if action.cool != 0 && action_tracker.timer.seconds == 0 {
+            println(
+              entity.name, "cannot use", action.name,
+              "for", action.cool, "seconds."
+            )
+            action_tracker.timer.seconds += 1
+          } else if action.cool == action_tracker.timer.seconds {
+            action_tracker.timer.stage = .Prep
+            action_tracker.timer.seconds = 0
+          } else {
+            action_tracker.timer.seconds += 1
+          }
+          break stage_loop
         }
-        entity.actions[0].action_timer.seconds += 1
-        break stage_loop
-      case .BlockingCooldown:
-        if action.blocking_cool != 0 && entity.actions[0].action_timer.seconds == 0 {
-          entity.is_doing_blocking_cool = true
-          println(
-            entity.name, "is paralyzed after using", action.name,
-            "for", action.blocking_cool, "seconds."
-          )
-          entity.actions[0].action_timer.seconds += 1
-        } else if action.blocking_cool == 0 {
-          entity.actions[0].action_timer.stage = .Cooldown
-          continue stage_loop
-        } else if action.blocking_cool == entity.actions[0].action_timer.seconds {
-          println(entity.name, "recovers from paralysis induced by", action.name, ".")
-          entity.is_doing_blocking_cool = false
-          entity.actions[0].action_timer.stage = .Cooldown
-          entity.actions[0].action_timer.seconds = 0
-        } else {
-          entity.actions[0].action_timer.seconds += 1
-        }
-        break stage_loop
-      case .Cooldown:
-        if action.cool != 0 && entity.actions[0].action_timer.seconds == 0 {
-          println(
-            entity.name, "cannot use", action.name,
-            "for", action.cool, "seconds."
-          )
-          entity.actions[0].action_timer.seconds += 1
-        } else if action.cool == entity.actions[0].action_timer.seconds {
-          entity.actions[0].action_timer.stage = .Prep
-          entity.actions[0].action_timer.seconds = 0
-        } else {
-          entity.actions[0].action_timer.seconds += 1
-        }
-        break stage_loop
       }
     }
   }
@@ -384,9 +386,9 @@ delete_world :: proc(world: #soa[dynamic]WorldEnvSOA) {
 }
 
 ActionTracker :: struct {
-  action_id: u32, // id 0 should be a no-op, action list immutable
-  action_focus: u32,
-  action_timer: ActionTimer,
+  id: u32, // id 0 should be a no-op, action list immutable
+  focus: u32,
+  timer: ActionTimer,
 }
 
 make_action_tracker_list :: proc(action_trackers: []ActionTracker) -> ^[dynamic]ActionTracker {
