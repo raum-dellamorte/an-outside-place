@@ -16,7 +16,7 @@ As a pitiful living thing, or perhaps the shadow of one, you awake in this place
 is becoming not a place. Lost in the islands of past places dissolving into Naught,
 you can accept your fate and be nothing, or, if you're not quite ready, there are options.
 
-You may may think of escape... Is it even possible to escape to where the living thrive 
+You may think of escape... Is it even possible to escape to where the living thrive 
 in their sin against That Which Is Not? Can you fight your way to The Present, finding
 paths from island to island in hopes of getting closer to escaping The Abyss? It may
 be challenging without divine favor.
@@ -32,30 +32,34 @@ at your soul. No will to live, no will to die, only the will to create and destr
 accident of purposelessness you stand in opposition and aid to creation and destruction,
 achieving balance with no forethought or aim. It is not about being, it is about doing.
 Doing whatever comes to mind. Kill, resurrect, steal, donate, unite, alienate. These
-islands in the belly of The Void are a playground for shadow of the living becoming a Sin.
+islands in the belly of The Void are a playground for a shadow of the living seeking to
+become a Sin.
 
 Championing life may be challenging above all, for The Creator, The Thief, knows you not.
-You must serve Existence with loyalty and tenacity with no hope of help if help you hope 
+You must serve Existence with loyalty and tenacity, with no hope of help if help you hope 
 for. You are in the shadow beyond its vile realm and if you are to be seen you must make
-yourself a beacon bright enough to shine through the nashing teeth of The Void, and only
+yourself a beacon bright enough to shine through the gnashing teeth of The Void, and only
 then may you have a chance to earn the favor of The Creator, The Sin That Betrayed Chaos,
-Theif Of The Crown Of Existence. Even The Narrator is against you and your love of pretty
+Thief Of The Crown Of Existence. Even The Narrator is against you and your love of pretty
 little flowers and whatnot.
 
 Where was I? Sorry. Anyway, it's probably best just to give up, sit by the edge, and wait
 for all that you were to dissolve into The Abyss.
 
-We, Here At Raum Dellamorte, Apologize For The Long Intro To A Game That Will Never Be
-======================================================================================
+# Status:
+### We, Here At Raum Dellamorte, Apologize For The Long Intro To A Game That Will Never Be
 
 So, the idea of the thing is coming together, sort of. Maybe a bit over ambitiosly.
 
 So far, we have a cube that can "fight" other cubes and either kill them or be killed.
-However being killed does not yet stop you from continueing to kill and we do consider
-that to be a bug.
+~However being killed does not yet stop you from continueing to kill and we do consider
+that to be a bug.~ At the moment, if you die you can still move around but you can't
+pass through anything alive. That gave me an idea for a maze wherein you have to defeat
+obstacles in the correct order to make it through, perhaps even giving specific advantages
+to being dead like being able to pass through certain walls though you can't pass through
+a living obstacle. IDK, whatevs. 
 
-I Like Odin
-===========
+### I Like Odin
 
 Odin is good.
 
