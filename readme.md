@@ -24,7 +24,7 @@ be challenging without divine favor.
 You may understand that all must be returned to The Nothing and serve as a digestive aid,
 helping to break down some of the more stubborn living things in this place. Perhaps you
 could earn the favor of That Which Is Not and ascend to The Present as representative of
-The Void, Mercinary of the Abyss. 
+The Void, Mercenary of the Abyss.
 
 Or perhaps you are a trouble maker? It may be The Chaos, The Noise, The Instability that 
 you would align yourself with, like those naughty Sins of the Elements. No loyalties tug
@@ -52,7 +52,7 @@ for all that you were to dissolve into The Abyss.
 So, the idea of the thing is coming together, sort of. Maybe a bit over ambitiosly.
 
 So far, we have a cube that can "fight" other cubes and either kill them or be killed.
-~However being killed does not yet stop you from continueing to kill and we do consider
+~However being killed does not yet stop you from continuing to kill and we do consider
 that to be a bug.~ At the moment, if you die you can still move around but you can't
 pass through anything alive. That gave me an idea for a maze wherein you have to defeat
 obstacles in the correct order to make it through, perhaps even giving specific advantages
