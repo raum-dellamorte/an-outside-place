@@ -176,7 +176,7 @@ main :: proc() {
         }
       }
     } else { // In Combat!
-      process_combat_tic(&world, &combatants)
+      process_combat_tic(world[:], &combatants)
     }
     // Move Camera
     // move_cam(&camera, &player.pos)
@@ -217,8 +217,9 @@ draw_world :: proc(world: #soa[]WorldEnvSOA) {
   }
 }
 
-process_combat_tic :: proc(world: ^#soa[dynamic]WorldEnvSOA, combatants: ^[dynamic]u32) { // In Combat!
+process_combat_tic :: proc(world: #soa[]WorldEnvSOA, combatants: ^[dynamic]u32) { // In Combat!
   action_list := ActionList
+  world := world
   fight_loop: for i in combatants {
     entity := &world[i]
     if !entity.is_alive { continue fight_loop }
