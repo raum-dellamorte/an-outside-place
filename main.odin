@@ -181,6 +181,7 @@ main :: proc() {
     // Move Camera
     // move_cam(&camera, &player.pos)
     cam_follow_world_target(&camera, world[:])
+    // update loop vars // I'm not sure why I'm doing this after above things
     player_move_dist = player_speed / 60.0
     frametime = rl.GetFrameTime()
     // Render Phase
