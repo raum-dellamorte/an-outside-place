@@ -156,25 +156,7 @@ main :: proc() {
       if rl.IsKeyDown(.A) || rl.IsKeyDown(.LEFT) {player.pos.x -= player_move_dist}
       if rl.IsKeyDown(.D) || rl.IsKeyDown(.RIGHT) {player.pos.x += player_move_dist}
       // Check Collision
-      collision := false
-      for &mob, i in world {
-        if mob.is_mob && mob.is_alive {
-          collision = rl.CheckCollisionBoxes(
-            {player.pos - 0.5,player.pos + 0.5}, // Assumes Size is 1x1x1
-            {mob.pos - 0.5, mob.pos + 0.5}
-          )
-          if collision {
-            // println("Player Collided With", mob.pos)
-            player.pos = player.prev_pos
-            if player.is_alive {
-              mob.actions[0].focus = 0 // 0 is the player atm
-              player.actions[0].focus = u32(i)
-              append(&combatants, u32(0), u32(i))
-            }
-            break
-          }
-        }
-      }
+      check_for_collisions(world[:], &combatants)
     } else { // In Combat!
       process_combat_tic(world[:], &combatants)
     }
@@ -236,6 +218,29 @@ get_cam_target :: proc(world: #soa[]WorldEnvSOA) -> ^WorldEnvSOA {
     }
   }
   return nil
+}
+
+check_for_collisions :: proc(world: #soa[]WorldEnvSOA, combatants: ^[dynamic]u32) {
+  collision := false
+  player := get_active_player(world[:])
+  for &mob, i in world {
+    if mob.is_mob && mob.is_alive {
+      collision = rl.CheckCollisionBoxes(
+        {player.pos - 0.5,player.pos + 0.5}, // Assumes Size is 1x1x1
+        {mob.pos - 0.5, mob.pos + 0.5}
+      )
+      if collision {
+        // println("Player Collided With", mob.pos)
+        player.pos = player.prev_pos
+        if player.is_alive {
+          mob.actions[0].focus = 0 // 0 is the player atm
+          player.actions[0].focus = u32(i)
+          append(combatants, u32(0), u32(i))
+        }
+        break
+      }
+    }
+  }
 }
 
 process_combat_tic :: proc(world: #soa[]WorldEnvSOA, combatants: ^[dynamic]u32) { // In Combat!
