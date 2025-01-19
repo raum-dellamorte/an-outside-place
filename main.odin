@@ -218,6 +218,26 @@ draw_world :: proc(world: #soa[]WorldEnvSOA) {
   }
 }
 
+get_active_player :: proc(world: #soa[]WorldEnvSOA) -> ^WorldEnvSOA {
+  //
+  for &thing in world {
+    if thing.is_player {
+      return &thing
+    }
+  }
+  return nil
+}
+
+get_cam_target :: proc(world: #soa[]WorldEnvSOA) -> ^WorldEnvSOA {
+  //
+  for &thing in world {
+    if thing.is_cam_target {
+      return &thing
+    }
+  }
+  return nil
+}
+
 process_combat_tic :: proc(world: #soa[]WorldEnvSOA, combatants: ^[dynamic]u32) { // In Combat!
   action_list := ActionList
   world := world
