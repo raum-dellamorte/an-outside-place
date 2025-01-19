@@ -95,6 +95,17 @@ main :: proc() {
     camera.target.y = target^.y
     camera.target.z = target^.z
   }
+  cam_follow_world_target :: proc(camera: ^rl.Camera3D, world: #soa[]WorldEnvSOA) {
+    target : ^[3]f32 = nil
+    for &thing in world {
+      if thing.is_cam_target {
+        target = &thing.pos
+      }
+    }
+    if target != nil {
+      move_cam(camera, target)
+    }
+  }
   
   // Game Vars
   world: #soa[dynamic]WorldEnvSOA
@@ -102,7 +113,7 @@ main :: proc() {
   defer delete_world(world)
   append_soa(&world, WorldEnvSOA{
     name = "The Player",
-    is_player = true, color = rl.Color {200,100,120,255},
+    is_player = true, is_cam_target = true, color = rl.Color {200,100,120,255},
     is_alive = true, health = 100,
     actions = make_action_tracker_list({ { id = 1 } }),
   })
@@ -168,7 +179,8 @@ main :: proc() {
       process_combat_tic(&world, &combatants)
     }
     // Move Camera
-    move_cam(&camera, &player.pos)
+    // move_cam(&camera, &player.pos)
+    cam_follow_world_target(&camera, world[:])
     player_move_dist = player_speed / 60.0
     frametime = rl.GetFrameTime()
     // Render Phase
@@ -363,6 +375,7 @@ process_combat_tic :: proc(world: ^#soa[dynamic]WorldEnvSOA, combatants: ^[dynam
 }
 
 WorldEnvSOA :: struct {
+  is_cam_target: bool,
   is_player: bool,
   is_mob: bool,
   is_object: bool,
