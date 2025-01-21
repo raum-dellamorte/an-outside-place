@@ -119,12 +119,14 @@ main :: proc() {
   player := &world[0]
   combatants := make([dynamic]u32, 0, 50)
   defer delete(combatants)
-  player_speed : f32 = 0.2
+  player_speed : f32 = 10.0
   player_move_dist : f32 = 0
-  frametime : f32
-
+  TIC : f64 : 1.0 / 60.0
+  time_prev: f64 = rl.GetTime()
+  time_now : f64 = rl.GetTime()
+  
   // Game Loop
-  for !rl.WindowShouldClose() {
+  game_loop: for !rl.WindowShouldClose() {
     for &thing in world {
       if thing.is_player || thing.is_mob {
         thing.prev_pos = thing.pos
@@ -145,16 +147,31 @@ main :: proc() {
     cam_follow_world_target(&camera, world[:])
     // update loop vars // I'm not sure why I'm doing this after above things
     player_move_dist = player_speed / 60.0
-    frametime = rl.GetFrameTime()
-    // Render Phase
-    { rl.BeginDrawing()
-      defer rl.EndDrawing()
-      rl.ClearBackground(rl.Color {50,20,20,255} )
-      { rl.BeginMode3D(camera)
-        defer rl.EndMode3D()
-        draw_world(world[:])
-      } // End 3D Mode
-    } // End Draw Mode
+    if (rl.GetTime() - time_prev) >= TIC * 2 {
+      time_prev += TIC
+      continue game_loop
+    }
+    render_loop: for {
+      // Render Phase
+      { rl.BeginDrawing()
+        defer rl.EndDrawing()
+        rl.ClearBackground(rl.Color {50,20,20,255} )
+        { rl.BeginMode3D(camera)
+          defer rl.EndMode3D()
+          draw_world(world[:])
+        } // End 3D Mode
+      } // End Draw Mode
+      if rl.WindowShouldClose() {
+        break game_loop
+      }
+      time_now = rl.GetTime()
+      if time_now - time_prev <= 1.0 / 60.0 {
+        continue render_loop
+      } else {
+        time_prev += 1.0 / 60.0
+        break render_loop
+      }
+    }
   }
 }
 
