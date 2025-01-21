@@ -87,25 +87,6 @@ main :: proc() {
     fovy       = 90.0,
     projection = rl.CameraProjection.PERSPECTIVE,
   }
-  move_cam :: proc(camera: ^rl.Camera3D, target: ^[3]f32) {
-    camera.position.x = target^.x
-    camera.position.y = target^.y + 2.0
-    camera.position.z = target^.z + 4.0
-    camera.target.x = target^.x
-    camera.target.y = target^.y
-    camera.target.z = target^.z
-  }
-  cam_follow_world_target :: proc(camera: ^rl.Camera3D, world: #soa[]WorldEnvSOA) {
-    target : ^[3]f32 = nil
-    for &thing in world {
-      if thing.is_cam_target {
-        target = &thing.pos
-      }
-    }
-    if target != nil {
-      move_cam(camera, target)
-    }
-  }
   
   // Game Vars
   world: #soa[dynamic]WorldEnvSOA
@@ -240,6 +221,26 @@ check_for_collisions :: proc(world: #soa[]WorldEnvSOA, combatants: ^[dynamic]u32
         break
       }
     }
+  }
+}
+
+move_cam :: proc(camera: ^rl.Camera3D, target: ^[3]f32) {
+  camera.position.x = target^.x
+  camera.position.y = target^.y + 2.0
+  camera.position.z = target^.z + 4.0
+  camera.target.x = target^.x
+  camera.target.y = target^.y
+  camera.target.z = target^.z
+}
+cam_follow_world_target :: proc(camera: ^rl.Camera3D, world: #soa[]WorldEnvSOA) {
+  target : ^[3]f32 = nil
+  for &thing in world {
+    if thing.is_cam_target {
+      target = &thing.pos
+    }
+  }
+  if target != nil {
+    move_cam(camera, target)
   }
 }
 
