@@ -23,6 +23,8 @@ main :: proc() {
   rl.InitWindow(i32(WIN.x), i32(WIN.y), "An Outside Place")
   defer rl.CloseWindow()
   
+  // rl.SetTargetFPS(60)
+  
   // // Shaders
   // rope_trail_shader := rl.LoadShader(
   //   "res/shaders/rope_trail_instanced.vs",
