@@ -199,29 +199,29 @@ draw_world :: proc(world: #soa[]WorldEnvSOA) {
   }
 }
 
-get_active_player :: proc(world: #soa[]WorldEnvSOA) -> ^WorldEnvSOA {
-  //
-  for &thing in world {
+get_active_player :: proc(world: #soa[]WorldEnvSOA) -> int {
+  for thing, i in world {
     if thing.is_player {
-      return &thing
+      return i
     }
   }
-  return nil
+  return -1
 }
 
-get_cam_target :: proc(world: #soa[]WorldEnvSOA) -> ^WorldEnvSOA {
-  //
-  for &thing in world {
+get_cam_target :: proc(world: #soa[]WorldEnvSOA) -> int {
+  for thing, i in world {
     if thing.is_cam_target {
-      return &thing
+      return i
     }
   }
-  return nil
+  return -1
 }
 
 check_for_collisions :: proc(world: #soa[]WorldEnvSOA, combatants: ^[dynamic]u32) {
+  world := world // explicit mutation
+  combatants := combatants
+  player := &world[get_active_player(world)]
   collision := false
-  player := get_active_player(world[:])
   for &mob, i in world {
     if mob.is_mob && mob.is_alive {
       collision = rl.CheckCollisionBoxes(
@@ -230,7 +230,7 @@ check_for_collisions :: proc(world: #soa[]WorldEnvSOA, combatants: ^[dynamic]u32
       )
       if collision {
         // println("Player Collided With", mob.pos)
-        player.pos = player.prev_pos
+        player^.pos = player.prev_pos
         if player.is_alive {
           mob.actions[0].focus = 0 // 0 is the player atm
           player.actions[0].focus = u32(i)
