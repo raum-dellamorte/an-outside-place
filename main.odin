@@ -122,7 +122,7 @@ main :: proc() {
   combatants := make([dynamic]u32, 0, 50)
   defer delete(combatants)
   player_speed : f32 = 10.0
-  player_move_dist : f32 = 0
+  player_move_dist : f32 = player_speed / 60.0
   TIC : f64 : 1.0 / 60.0
   TIC_MIN_PERCENT :: TIC * 0.9
   time_prev: f64 = rl.GetTime()
@@ -148,8 +148,6 @@ main :: proc() {
     }
     // Move Camera
     cam_follow_world_target(&camera, world[:])
-    // update loop vars // I'm not sure why I'm doing this after above things
-    player_move_dist = player_speed / 60.0
     if (rl.GetTime() - time_prev) >= TIC * 2 {
       time_prev += TIC
       continue game_loop
