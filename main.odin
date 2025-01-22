@@ -124,6 +124,7 @@ main :: proc() {
   player_speed : f32 = 10.0
   player_move_dist : f32 = 0
   TIC : f64 : 1.0 / 60.0
+  TIC_MIN_PERCENT :: TIC * 0.9
   time_prev: f64 = rl.GetTime()
   time_now : f64 = rl.GetTime()
   
@@ -167,10 +168,11 @@ main :: proc() {
         break game_loop
       }
       time_now = rl.GetTime()
-      if time_now - time_prev <= 1.0 / 60.0 {
+      this_tic := time_now - time_prev
+      if this_tic < TIC_MIN_PERCENT {
         continue render_loop
       } else {
-        time_prev += 1.0 / 60.0
+        time_prev += TIC
         break render_loop
       }
     }
