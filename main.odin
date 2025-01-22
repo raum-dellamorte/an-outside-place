@@ -148,7 +148,8 @@ main :: proc() {
     }
     // Move Camera
     cam_follow_world_target(&camera, world[:])
-    if (rl.GetTime() - time_prev) >= TIC * 2 {
+    // How We Doin' On Time?
+    if (rl.GetTime() - time_prev) >= TIC * 1.2 {
       time_prev += TIC
       continue game_loop
     }
