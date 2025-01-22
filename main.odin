@@ -156,14 +156,8 @@ main :: proc() {
     }
     render_loop: for {
       // Render Phase
-      { rl.BeginDrawing()
-        defer rl.EndDrawing()
-        rl.ClearBackground(rl.Color {50,20,20,255} )
-        { rl.BeginMode3D(camera)
-          defer rl.EndMode3D()
-          draw_world(world[:])
-        } // End 3D Mode
-      } // End Draw Mode
+      render(&camera, world[:])
+      // End Draw Mode
       if rl.WindowShouldClose() {
         break game_loop
       }
@@ -193,6 +187,16 @@ ActionList :: [?]ActionUnit {
     base_damage = 15,
     prep = 5, perform = 3, cool = 8
   },
+}
+
+render :: proc(camera: ^rl.Camera3D, world: #soa[]WorldEnvSOA) {
+  rl.BeginDrawing()
+  defer rl.EndDrawing()
+  rl.ClearBackground(rl.Color {50,20,20,255} )
+  { rl.BeginMode3D(camera^)
+    defer rl.EndMode3D()
+    draw_world(world)
+  } // End 3D Mode
 }
 
 draw_world :: proc(world: #soa[]WorldEnvSOA) {
