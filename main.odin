@@ -94,30 +94,32 @@ main :: proc() {
   world: #soa[dynamic]WorldEnvSOA
   world = make_soa(#soa[dynamic]WorldEnvSOA, 0, 100)
   defer delete_world(world)
-  append_soa(&world, WorldEnvSOA{
-    name = "The Player",
-    is_player = true, is_cam_target = true, color = rl.Color {200,100,120,255},
-    is_alive = true, health = 100,
-    actions = make_action_tracker_list({ { id = 1 } }),
-  })
-  append_soa(&world, WorldEnvSOA{
-    name = "Blue",
-    is_mob = true, pos = {10.0, 0.0, -5.0}, color = rl.BLUE,
-    is_alive = true, health = 30,
-    actions = make_action_tracker_list({ { id = 2 } }),
-  })
-  append_soa(&world, WorldEnvSOA{
-    name = "Green",
-    is_mob = true, pos = {4.0, 0.0, -3.0}, color = rl.GREEN,
-    is_alive = true, health = 50,
-    actions = make_action_tracker_list({ { id = 2 } }),
-  })
-  append_soa(&world, WorldEnvSOA{
-    name = "Purple",
-    is_mob = true, pos = {-8.0, 0.0, 2.0}, color = rl.DARKPURPLE,
-    is_alive = true, health = 70,
-    actions = make_action_tracker_list({ { id = 2 } }),
-  })
+  append_soa(&world,
+    WorldEnvSOA{
+      name = "The Player",
+      is_player = true, is_cam_target = true, color = rl.Color {200,100,120,255},
+      is_alive = true, health = 100,
+      actions = make_action_tracker_list({ { id = 1 } }),
+    },
+    WorldEnvSOA{
+      name = "Blue",
+      is_mob = true, pos = {10.0, 0.0, -5.0}, color = rl.BLUE,
+      is_alive = true, health = 30,
+      actions = make_action_tracker_list({ { id = 2 } }),
+    },
+    WorldEnvSOA{
+      name = "Green",
+      is_mob = true, pos = {4.0, 0.0, -3.0}, color = rl.GREEN,
+      is_alive = true, health = 50,
+      actions = make_action_tracker_list({ { id = 2 } }),
+    },
+    WorldEnvSOA{
+      name = "Purple",
+      is_mob = true, pos = {-8.0, 0.0, 2.0}, color = rl.DARKPURPLE,
+      is_alive = true, health = 70,
+      actions = make_action_tracker_list({ { id = 2 } }),
+    }
+  )
   player := &world[0]
   combatants := make([dynamic]u32, 0, 50)
   defer delete(combatants)
