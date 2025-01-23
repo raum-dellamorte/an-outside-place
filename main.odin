@@ -216,7 +216,7 @@ get_active_player :: proc(world: #soa[]WorldEnvSOA) -> int {
       return i
     }
   }
-  return -1
+  return -1 // fixme: this should probably return an error
 }
 
 get_cam_target :: proc(world: #soa[]WorldEnvSOA) -> int {
@@ -225,7 +225,7 @@ get_cam_target :: proc(world: #soa[]WorldEnvSOA) -> int {
       return i
     }
   }
-  return -1
+  return -1 // fixme: this should probably return an error
 }
 
 check_for_collisions :: proc(world: #soa[]WorldEnvSOA, combatants: ^[dynamic]u32) {
