@@ -126,50 +126,45 @@ main :: proc() {
   player_speed : f32 = 10.0
   player_move_dist : f32 = player_speed / 60.0
   TIC : f64 : 1.0 / 60.0
-  TIC_MIN_PERCENT :: TIC * 0.9
+  TIC_MIN_TIME :: TIC * 0.9
+  TIC_OVERTIME :: TIC * 1.2
   time_prev: f64 = rl.GetTime()
-  time_now : f64 = rl.GetTime()
+  tic_ready := true
   
   // Game Loop
   game_loop: for !rl.WindowShouldClose() {
-    for &thing in world {
-      if thing.is_player || thing.is_mob {
-        thing.prev_pos = thing.pos
+    if tic_ready {
+      for &thing in world {
+        if thing.is_player || thing.is_mob {
+          thing.prev_pos = thing.pos
+        }
       }
+      if len(&combatants) == 0 {
+        // Move "Player"
+        if rl.IsKeyDown(.W) || rl.IsKeyDown(.UP) {player.pos.z -= player_move_dist}
+        if rl.IsKeyDown(.S) || rl.IsKeyDown(.DOWN) {player.pos.z += player_move_dist}
+        if rl.IsKeyDown(.A) || rl.IsKeyDown(.LEFT) {player.pos.x -= player_move_dist}
+        if rl.IsKeyDown(.D) || rl.IsKeyDown(.RIGHT) {player.pos.x += player_move_dist}
+        // Check Collision
+        check_for_collisions(world[:], &combatants)
+      } else { // In Combat!
+        process_combat_tic(world[:], &combatants)
+      }
+      // Move Camera
+      cam_follow_world_target(&camera, world[:])
+      tic_ready = false
     }
-    if len(&combatants) == 0 {
-      // Move "Player"
-      if rl.IsKeyDown(.W) || rl.IsKeyDown(.UP) {player.pos.z -= player_move_dist}
-      if rl.IsKeyDown(.S) || rl.IsKeyDown(.DOWN) {player.pos.z += player_move_dist}
-      if rl.IsKeyDown(.A) || rl.IsKeyDown(.LEFT) {player.pos.x -= player_move_dist}
-      if rl.IsKeyDown(.D) || rl.IsKeyDown(.RIGHT) {player.pos.x += player_move_dist}
-      // Check Collision
-      check_for_collisions(world[:], &combatants)
-    } else { // In Combat!
-      process_combat_tic(world[:], &combatants)
-    }
-    // Move Camera
-    cam_follow_world_target(&camera, world[:])
-    // How We Doin' On Time?
-    if (rl.GetTime() - time_prev) >= TIC * 1.2 {
+    // Skip render if overtime
+    if rl.GetTime() - time_prev >= TIC_OVERTIME {
       time_prev += TIC
       continue game_loop
     }
-    render_loop: for {
-      // Render Phase
-      render(&camera, world[:])
-      // End Draw Mode
-      if rl.WindowShouldClose() {
-        break game_loop
-      }
-      time_now = rl.GetTime()
-      this_tic := time_now - time_prev
-      if this_tic < TIC_MIN_PERCENT {
-        continue render_loop
-      } else {
-        time_prev += TIC
-        break render_loop
-      }
+    // Render Phase
+    render(&camera, world[:])
+    // Only render next pass if undertime
+    if rl.GetTime() - time_prev >= TIC_MIN_TIME {
+      time_prev += TIC
+      tic_ready = true
     }
   }
 }
