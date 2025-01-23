@@ -162,6 +162,7 @@ main :: proc() {
     }
     // Render Phase
     render(&camera, world[:])
+    draw_gui(world[:])
     // Only render next pass if undertime
     if rl.GetTime() - time_prev >= TIC_MIN_TIME {
       time_prev += TIC
@@ -194,6 +195,13 @@ render :: proc(camera: ^rl.Camera3D, world: #soa[]WorldEnvSOA) {
     defer rl.EndMode3D()
     draw_world(world)
   } // End 3D Mode
+  // No mode needed... I think
+  draw_gui(world)
+}
+
+draw_gui :: proc(world: #soa[]WorldEnvSOA) {
+  // Health and FPS and other garbage for the player to read
+  rl.DrawText(rl.TextFormat("FPS: % 6.02f", 60.0), 50, 50, 20, rl.RED)
 }
 
 draw_world :: proc(world: #soa[]WorldEnvSOA) {
