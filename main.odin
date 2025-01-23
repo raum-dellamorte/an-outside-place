@@ -15,6 +15,22 @@ printf :: fmt.printf
 println :: fmt.println
 parse_int :: strconv.parse_int
 
+ActionList :: [?]ActionUnit {
+  ActionUnit {
+    name = "No Action",
+  },
+  ActionUnit {
+    name = "Sword Attack",
+    base_damage = 10,
+    prep = 3, perform = 2, cool = 2
+  },
+  ActionUnit {
+    name = "Bite",
+    base_damage = 15,
+    prep = 5, perform = 3, cool = 8
+  },
+}
+
 main :: proc() {
   // Constants
   WIN: rl.Vector2 = {1280, 720}
@@ -169,22 +185,6 @@ main :: proc() {
       tic_ready = true
     }
   }
-}
-
-ActionList :: [?]ActionUnit {
-  ActionUnit {
-    name = "No Action",
-  },
-  ActionUnit {
-    name = "Sword Attack",
-    base_damage = 10,
-    prep = 3, perform = 2, cool = 2
-  },
-  ActionUnit {
-    name = "Bite",
-    base_damage = 15,
-    prep = 5, perform = 3, cool = 8
-  },
 }
 
 render :: proc(camera: ^rl.Camera3D, world: #soa[]WorldEnvSOA) {
