@@ -156,6 +156,7 @@ main :: proc() {
     }
     // Skip render if overtime
     if rl.GetTime() - time_prev >= TIC_OVERTIME {
+      // println("Overtime")
       time_prev += TIC
       continue game_loop
     }
