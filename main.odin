@@ -107,10 +107,9 @@ main :: proc() {
   }
   
   // Game Vars
-  world: #soa[dynamic]WorldEnvSOA
-  world = make_soa(#soa[dynamic]WorldEnvSOA, 0, 100)
-  defer delete_world(world)
-  append_soa(&world,
+  ctx := make_game_context()
+  defer delete_game_context(ctx)
+  append_soa(ctx.world,
     WorldEnvSOA{
       name = "The Player",
       is_player = true, is_cam_target = true, color = rl.Color {200,100,120,255},
@@ -136,7 +135,7 @@ main :: proc() {
       actions = make_action_tracker_list({ { id = 2 } }),
     }
   )
-  player := &world[0]
+  player := ctx.world[0]
   combatants := make([dynamic]u32, 0, 50)
   defer delete(combatants)
   player_speed : f32 = 10.0
@@ -150,7 +149,7 @@ main :: proc() {
   // Game Loop
   game_loop: for !rl.WindowShouldClose() {
     if tic_ready {
-      for &thing in world {
+      for &thing in ctx.world {
         if thing.is_player || thing.is_mob {
           thing.prev_pos = thing.pos
         }
@@ -162,12 +161,12 @@ main :: proc() {
         if rl.IsKeyDown(.A) || rl.IsKeyDown(.LEFT) {player.pos.x -= player_move_dist}
         if rl.IsKeyDown(.D) || rl.IsKeyDown(.RIGHT) {player.pos.x += player_move_dist}
         // Check Collision
-        check_for_collisions(world[:], &combatants)
+        check_for_collisions(&ctx, &combatants)
       } else { // In Combat!
-        process_combat_tic(world[:], &combatants)
+        process_combat_tic(&ctx, &combatants)
       }
       // Move Camera
-      cam_follow_world_target(&camera, world[:])
+      cam_follow_world_target(&camera, &ctx)
       tic_ready = false
     }
     // Skip render if overtime
@@ -177,8 +176,8 @@ main :: proc() {
       continue game_loop
     }
     // Render Phase
-    render(&camera, world[:])
-    draw_gui(world[:])
+    render(&camera, &ctx)
+    draw_gui(&ctx)
     // Only render next pass if undertime
     if rl.GetTime() - time_prev >= TIC_MIN_TIME {
       time_prev += TIC
@@ -187,31 +186,31 @@ main :: proc() {
   }
 }
 
-render :: proc(camera: ^rl.Camera3D, world: #soa[]WorldEnvSOA) {
+render :: proc(camera: ^rl.Camera3D, ctx: ^GameContext) {
   rl.BeginDrawing()
   defer rl.EndDrawing()
   rl.ClearBackground(rl.Color {50,20,20,255} )
   { rl.BeginMode3D(camera^)
     defer rl.EndMode3D()
-    draw_world(world)
+    draw_world(ctx)
   } // End 3D Mode
   // No mode needed... I think
-  draw_gui(world)
+  draw_gui(ctx)
 }
 
-draw_gui :: proc(world: #soa[]WorldEnvSOA) {
+draw_gui :: proc(ctx: ^GameContext) {
   // Health and FPS and other garbage for the player to read
   rl.DrawText(rl.TextFormat("FPS: % 6.02f", 60.0), 50, 50, 20, rl.RED)
 }
 
-draw_world :: proc(world: #soa[]WorldEnvSOA) {
-  for &thing in world {
+draw_world :: proc(ctx: ^GameContext) {
+  for &thing in ctx.world {
     rl.DrawCubeV(thing.pos, {f32(1), f32(1), f32(1)}, thing.color)
   }
 }
 
-get_active_player :: proc(world: #soa[]WorldEnvSOA) -> int {
-  for thing, i in world {
+get_active_player :: proc(ctx: ^GameContext) -> int {
+  for thing, i in ctx.world {
     if thing.is_player {
       return i
     }
@@ -219,8 +218,8 @@ get_active_player :: proc(world: #soa[]WorldEnvSOA) -> int {
   return -1 // fixme: this should probably return an error
 }
 
-get_cam_target :: proc(world: #soa[]WorldEnvSOA) -> int {
-  for thing, i in world {
+get_cam_target :: proc(ctx: ^GameContext) -> int {
+  for thing, i in ctx.world {
     if thing.is_cam_target {
       return i
     }
@@ -228,12 +227,12 @@ get_cam_target :: proc(world: #soa[]WorldEnvSOA) -> int {
   return -1 // fixme: this should probably return an error
 }
 
-check_for_collisions :: proc(world: #soa[]WorldEnvSOA, combatants: ^[dynamic]u32) {
-  world := world // explicit mutation
+check_for_collisions :: proc(ctx: ^GameContext, combatants: ^[dynamic]u32) {
+  ctx := ctx // explicit mutation
   combatants := combatants
-  player := &world[get_active_player(world)]
+  player := &ctx.world[get_active_player(ctx)]
   collision := false
-  for &mob, i in world {
+  for &mob, i in ctx.world {
     if mob.is_mob && mob.is_alive {
       collision = rl.CheckCollisionBoxes(
         {player.pos - 0.5,player.pos + 0.5}, // Assumes Size is 1x1x1
@@ -261,9 +260,9 @@ move_cam :: proc(camera: ^rl.Camera3D, target: ^[3]f32) {
   camera.target.y = target^.y
   camera.target.z = target^.z
 }
-cam_follow_world_target :: proc(camera: ^rl.Camera3D, world: #soa[]WorldEnvSOA) {
+cam_follow_world_target :: proc(camera: ^rl.Camera3D, ctx: ^GameContext) {
   target : ^[3]f32 = nil
-  for &thing in world {
+  for &thing in ctx.world {
     if thing.is_cam_target {
       target = &thing.pos
     }
@@ -273,17 +272,17 @@ cam_follow_world_target :: proc(camera: ^rl.Camera3D, world: #soa[]WorldEnvSOA) 
   }
 }
 
-process_combat_tic :: proc(world: #soa[]WorldEnvSOA, combatants: ^[dynamic]u32) { // In Combat!
+process_combat_tic :: proc(ctx: ^GameContext, combatants: ^[dynamic]u32) { // In Combat!
   action_list := ActionList
-  world := world
+  ctx := ctx
   fight_loop: for i in combatants {
-    entity := &world[i]
+    entity := &ctx.world[i]
     if !entity.is_alive { continue fight_loop }
     action_loop: for &action_tracker in entity.actions {
       if entity.action_is_blocking != nil && entity.action_is_blocking != action_tracker.id {
         continue action_loop
       }
-      action_focus := &world[action_tracker.focus]
+      action_focus := &ctx.world[action_tracker.focus]
       stage_loop: for {
         action := &action_list[action_tracker.id]
         // print("Entity:", entity.name, " Stage:", entity.action_timer.stage)
@@ -414,7 +413,7 @@ process_combat_tic :: proc(world: #soa[]WorldEnvSOA, combatants: ^[dynamic]u32) 
   }
   // Bring out your dead
   for i := 0; i < len(combatants); i += 1 {
-    entity := &world[combatants[i]]
+    entity := &ctx.world[combatants[i]]
     if !entity.is_alive {
       if entity.is_player {
         clear(combatants)
@@ -429,6 +428,29 @@ process_combat_tic :: proc(world: #soa[]WorldEnvSOA, combatants: ^[dynamic]u32) 
       break
     }
   }
+}
+
+GameContext :: struct {
+  world: ^#soa[dynamic]WorldEnvSOA,
+  prev_frame_times: [120]f64,
+  frame_time_ptr: int,
+  // I'm sure there will be other things to keep track of
+}
+make_game_context :: proc() -> GameContext {
+  world := new(#soa[dynamic]WorldEnvSOA)
+  world^ = make_soa(#soa[dynamic]WorldEnvSOA, 0, 100)
+  prev_frame_times := [120]f64{0..<120 = 60.0}
+  return GameContext{
+    world = world,
+    prev_frame_times = prev_frame_times,
+    frame_time_ptr = 0,
+  }
+}
+delete_game_context :: proc(game_context: GameContext) {
+  ctx := game_context
+  world := ctx.world^
+  // ctx.world = nil
+  delete_world(world)
 }
 
 WorldEnvSOA :: struct {
