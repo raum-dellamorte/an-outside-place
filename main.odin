@@ -177,7 +177,6 @@ main :: proc() {
     }
     // Render Phase
     render(&camera, &ctx)
-    draw_gui(&ctx)
     // Only render next pass if undertime
     if rl.GetTime() - time_prev >= TIC_MIN_TIME {
       time_prev += TIC
