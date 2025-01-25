@@ -130,9 +130,10 @@ main :: proc() {
   player_speed : f32 = 10.0
   player_move_dist : f32 = player_speed / 60.0
   TIC : f64 : 1.0 / 60.0
-  TIC_MIN_TIME :: TIC * 0.9
+  TIC_MIN_TIME :: TIC * 0.99
   TIC_OVERTIME :: TIC * 1.2
-  time_prev: f64 = rl.GetTime()
+  tic_prev: f64 = rl.GetTime()
+  draw_time_prev: f64 = rl.GetTime()
   tic_ready := true
   
   // Game Loop
@@ -156,19 +157,21 @@ main :: proc() {
       }
       // Move Camera
       cam_follow_world_target(&ctx)
+      write_calc_time(&ctx, tic_prev)
+      tic_prev += TIC
+      // Skip render if overtime
+      if read_last_calc_time(&ctx) >= TIC_OVERTIME {
+        // println("Overtime")
+        tic_prev += TIC // watchme: this might not be right
+        continue game_loop
+      }
       tic_ready = false
-    }
-    // Skip render if overtime
-    if rl.GetTime() - time_prev >= TIC_OVERTIME {
-      // println("Overtime")
-      time_prev += TIC
-      continue game_loop
     }
     // Render Phase
     render(&ctx)
     // Only render next pass if undertime
-    if rl.GetTime() - time_prev >= TIC_MIN_TIME {
-      time_prev += TIC
+    draw_time_prev = write_draw_time(&ctx, draw_time_prev)
+    if draw_time_prev - tic_prev >= TIC_MIN_TIME {
       tic_ready = true
     }
   }
@@ -188,7 +191,9 @@ render :: proc(ctx: ^GameContext) {
 
 draw_gui :: proc(ctx: ^GameContext) {
   // Health and FPS and other garbage for the player to read
-  rl.DrawText(rl.TextFormat("FPS: % 6.02f", 60.0), 50, 50, 20, rl.RED)
+  // avg := avg_draw_time(ctx)
+  rl.DrawText(rl.TextFormat("FPS: % 6.02f", ctx.fps), 50, 50, 20, rl.RED)
+  // rl.DrawFPS(50,50)
 }
 
 draw_world :: proc(ctx: ^GameContext) {
@@ -421,8 +426,13 @@ GameContext :: struct {
   world: ^#soa[dynamic]WorldEnvSOA,
   camera: rl.Camera3D,
   combatants: ^[dynamic]u32,
-  prev_frame_times: [120]f64,
-  frame_time_ptr: int,
+  prev_calc_times: [120]f64,
+  calc_time_ptr: int,
+  avg_calc_time: f64,
+  prev_draw_times: [120]f64,
+  draw_time_ptr: int,
+  avg_draw_time: f64,
+  fps: f64,
   
   // I'm sure there will be other things to keep track of
 }
@@ -438,13 +448,16 @@ make_game_context :: proc() -> GameContext {
   }
   combatants := new([dynamic]u32)
   combatants^ = make([dynamic]u32, 0, 50)
-  prev_frame_times := [120]f64{0..<120 = 60.0}
+  prev_calc_times := [120]f64{0..<120 = 60.0}
+  prev_draw_times := [120]f64{0..<120 = 60.0}
   return GameContext{
     world = world,
     camera = camera,
     combatants = combatants,
-    prev_frame_times = prev_frame_times,
-    frame_time_ptr = 0,
+    prev_calc_times = prev_calc_times,
+    calc_time_ptr = 0,
+    prev_draw_times = prev_draw_times,
+    draw_time_ptr = 0,
   }
 }
 delete_game_context :: proc(game_context: GameContext) {
@@ -454,6 +467,58 @@ delete_game_context :: proc(game_context: GameContext) {
   combatants := ctx.combatants^
   delete(combatants)
   delete_world(world)
+}
+write_calc_time :: proc(ctx: ^GameContext, end_of_last_frame: f64) {
+  ctx := ctx
+  ctx.prev_calc_times[ctx.calc_time_ptr] = rl.GetTime() - end_of_last_frame
+  if ctx.calc_time_ptr < 119 {
+    ctx.calc_time_ptr += 1
+  } else {
+    ctx.calc_time_ptr = 0
+    gen_avg_calc_time(ctx)
+    ctx.fps = 1.0 / (ctx.avg_calc_time + ctx.avg_draw_time) // ish...
+  }
+}
+read_last_calc_time :: proc(ctx: ^GameContext) -> f64 {
+  if ctx.calc_time_ptr == 0 {
+    return ctx.prev_calc_times[119]
+  } else {
+    return ctx.prev_calc_times[ctx.calc_time_ptr - 1]
+  }
+}
+gen_avg_calc_time :: proc(ctx: ^GameContext) {
+  ctx := ctx
+  avg : f64 = 0.0
+  for n in ctx.prev_calc_times {
+    avg += n
+  }
+  ctx.avg_calc_time = avg / 120.0
+}
+write_draw_time :: proc(ctx: ^GameContext, end_of_last_draw: f64) -> f64 {
+  ctx := ctx
+  time := rl.GetTime()
+  ctx.prev_draw_times[ctx.draw_time_ptr] = time - end_of_last_draw
+  if ctx.draw_time_ptr < 119 {
+    ctx.draw_time_ptr += 1
+  } else {
+    ctx.draw_time_ptr = 0
+    gen_avg_draw_time(ctx)
+  }
+  return time
+}
+read_last_draw_time :: proc(ctx: ^GameContext) -> f64 {
+  if ctx.draw_time_ptr == 0 {
+    return ctx.prev_draw_times[119]
+  } else {
+    return ctx.prev_draw_times[ctx.draw_time_ptr - 1]
+  }
+}
+gen_avg_draw_time :: proc(ctx: ^GameContext) -> f64 {
+  avg : f64 = 0.0
+  for n in ctx.prev_draw_times {
+    avg += n
+  }
+  return avg / 120.0
 }
 
 WorldEnvSOA :: struct {
