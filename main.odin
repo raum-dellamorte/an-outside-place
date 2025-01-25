@@ -96,16 +96,7 @@ main :: proc() {
   // defer delete_mat_helper(cube_mat_helper)
   
   // cube.materials = cube_mat_helper.pointer
-  
-  // Camera
-  camera := rl.Camera3D {
-    position   = [3]f32{0, 2, 4},
-    target     = [3]f32{0, 0, 0},
-    up         = [3]f32{0, 1, 0},
-    fovy       = 90.0,
-    projection = rl.CameraProjection.PERSPECTIVE,
-  }
-  
+    
   // Game Vars
   ctx := make_game_context()
   defer delete_game_context(ctx)
@@ -135,9 +126,7 @@ main :: proc() {
       actions = make_action_tracker_list({ { id = 2 } }),
     }
   )
-  player := ctx.world[0]
-  combatants := make([dynamic]u32, 0, 50)
-  defer delete(combatants)
+  player := &ctx.world[0]
   player_speed : f32 = 10.0
   player_move_dist : f32 = player_speed / 60.0
   TIC : f64 : 1.0 / 60.0
@@ -154,19 +143,19 @@ main :: proc() {
           thing.prev_pos = thing.pos
         }
       }
-      if len(&combatants) == 0 {
+      if len(ctx.combatants) == 0 {
         // Move "Player"
-        if rl.IsKeyDown(.W) || rl.IsKeyDown(.UP) {player.pos.z -= player_move_dist}
-        if rl.IsKeyDown(.S) || rl.IsKeyDown(.DOWN) {player.pos.z += player_move_dist}
-        if rl.IsKeyDown(.A) || rl.IsKeyDown(.LEFT) {player.pos.x -= player_move_dist}
-        if rl.IsKeyDown(.D) || rl.IsKeyDown(.RIGHT) {player.pos.x += player_move_dist}
+        if rl.IsKeyDown(.W) || rl.IsKeyDown(.UP) {player^.pos.z -= player_move_dist}
+        if rl.IsKeyDown(.S) || rl.IsKeyDown(.DOWN) {player^.pos.z += player_move_dist}
+        if rl.IsKeyDown(.A) || rl.IsKeyDown(.LEFT) {player^.pos.x -= player_move_dist}
+        if rl.IsKeyDown(.D) || rl.IsKeyDown(.RIGHT) {player^.pos.x += player_move_dist}
         // Check Collision
-        check_for_collisions(&ctx, &combatants)
+        check_for_collisions(&ctx)
       } else { // In Combat!
-        process_combat_tic(&ctx, &combatants)
+        process_combat_tic(&ctx)
       }
       // Move Camera
-      cam_follow_world_target(&camera, &ctx)
+      cam_follow_world_target(&ctx)
       tic_ready = false
     }
     // Skip render if overtime
@@ -176,7 +165,7 @@ main :: proc() {
       continue game_loop
     }
     // Render Phase
-    render(&camera, &ctx)
+    render(&ctx)
     // Only render next pass if undertime
     if rl.GetTime() - time_prev >= TIC_MIN_TIME {
       time_prev += TIC
@@ -185,11 +174,11 @@ main :: proc() {
   }
 }
 
-render :: proc(camera: ^rl.Camera3D, ctx: ^GameContext) {
+render :: proc(ctx: ^GameContext) {
   rl.BeginDrawing()
   defer rl.EndDrawing()
   rl.ClearBackground(rl.Color {50,20,20,255} )
-  { rl.BeginMode3D(camera^)
+  { rl.BeginMode3D(ctx.camera)
     defer rl.EndMode3D()
     draw_world(ctx)
   } // End 3D Mode
@@ -226,9 +215,8 @@ get_cam_target :: proc(ctx: ^GameContext) -> int {
   return -1 // fixme: this should probably return an error
 }
 
-check_for_collisions :: proc(ctx: ^GameContext, combatants: ^[dynamic]u32) {
+check_for_collisions :: proc(ctx: ^GameContext) {
   ctx := ctx // explicit mutation
-  combatants := combatants
   player := &ctx.world[get_active_player(ctx)]
   collision := false
   for &mob, i in ctx.world {
@@ -243,7 +231,7 @@ check_for_collisions :: proc(ctx: ^GameContext, combatants: ^[dynamic]u32) {
         if player.is_alive {
           mob.actions[0].focus = 0 // 0 is the player atm
           player.actions[0].focus = u32(i)
-          append(combatants, u32(0), u32(i))
+          append(ctx.combatants, u32(0), u32(i)) // fixme: need to potentially add multiple combatants
         }
         break
       }
@@ -259,7 +247,7 @@ move_cam :: proc(camera: ^rl.Camera3D, target: ^[3]f32) {
   camera.target.y = target^.y
   camera.target.z = target^.z
 }
-cam_follow_world_target :: proc(camera: ^rl.Camera3D, ctx: ^GameContext) {
+cam_follow_world_target :: proc(ctx: ^GameContext) {
   target : ^[3]f32 = nil
   for &thing in ctx.world {
     if thing.is_cam_target {
@@ -267,14 +255,14 @@ cam_follow_world_target :: proc(camera: ^rl.Camera3D, ctx: ^GameContext) {
     }
   }
   if target != nil {
-    move_cam(camera, target)
+    move_cam(&ctx.camera, target)
   }
 }
 
-process_combat_tic :: proc(ctx: ^GameContext, combatants: ^[dynamic]u32) { // In Combat!
+process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
   action_list := ActionList
   ctx := ctx
-  fight_loop: for i in combatants {
+  fight_loop: for i in ctx.combatants {
     entity := &ctx.world[i]
     if !entity.is_alive { continue fight_loop }
     action_loop: for &action_tracker in entity.actions {
@@ -411,19 +399,19 @@ process_combat_tic :: proc(ctx: ^GameContext, combatants: ^[dynamic]u32) { // In
     }
   }
   // Bring out your dead
-  for i := 0; i < len(combatants); i += 1 {
-    entity := &ctx.world[combatants[i]]
+  for i := 0; i < len(ctx.combatants); i += 1 {
+    entity := &ctx.world[ctx.combatants[i]]
     if !entity.is_alive {
       if entity.is_player {
-        clear(combatants)
+        clear(ctx.combatants)
         break
       } else {
-        ordered_remove(combatants, i)
+        ordered_remove(ctx.combatants, i)
         i -= 1
       }
     }
-    if len(combatants) < 2 {
-      clear(combatants)
+    if len(ctx.combatants) < 2 {
+      clear(ctx.combatants)
       break
     }
   }
@@ -431,16 +419,30 @@ process_combat_tic :: proc(ctx: ^GameContext, combatants: ^[dynamic]u32) { // In
 
 GameContext :: struct {
   world: ^#soa[dynamic]WorldEnvSOA,
+  camera: rl.Camera3D,
+  combatants: ^[dynamic]u32,
   prev_frame_times: [120]f64,
   frame_time_ptr: int,
+  
   // I'm sure there will be other things to keep track of
 }
 make_game_context :: proc() -> GameContext {
   world := new(#soa[dynamic]WorldEnvSOA)
   world^ = make_soa(#soa[dynamic]WorldEnvSOA, 0, 100)
+  camera := rl.Camera3D {
+    position   = [3]f32{0, 2, 4},
+    target     = [3]f32{0, 0, 0},
+    up         = [3]f32{0, 1, 0},
+    fovy       = 90.0,
+    projection = rl.CameraProjection.PERSPECTIVE,
+  }
+  combatants := new([dynamic]u32)
+  combatants^ = make([dynamic]u32, 0, 50)
   prev_frame_times := [120]f64{0..<120 = 60.0}
   return GameContext{
     world = world,
+    camera = camera,
+    combatants = combatants,
     prev_frame_times = prev_frame_times,
     frame_time_ptr = 0,
   }
@@ -449,6 +451,8 @@ delete_game_context :: proc(game_context: GameContext) {
   ctx := game_context
   world := ctx.world^
   // ctx.world = nil
+  combatants := ctx.combatants^
+  delete(combatants)
   delete_world(world)
 }
 
