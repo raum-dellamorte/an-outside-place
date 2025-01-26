@@ -116,8 +116,9 @@ main :: proc() {
   TIC : f64 : 1.0 / 60.0
   TIC_MIN_TIME :: TIC * 0.99
   TIC_OVERTIME :: TIC * 1.2
-  tic_prev: f64 = rl.GetTime()
-  draw_time_prev: f64 = rl.GetTime()
+  tic_counter: f64 = rl.GetTime()
+  calc_timestamp: f64 = rl.GetTime()
+  draw_timestamp: f64 = rl.GetTime()
   tic_ready := true
   
   // Game Loop
@@ -141,12 +142,13 @@ main :: proc() {
       }
       // Move Camera
       cam_follow_world_target(&ctx)
-      write_calc_time(&ctx, tic_prev)
-      tic_prev += TIC
+      calc_timestamp = write_calc_time(&ctx, draw_timestamp)
+      tic_counter += TIC
       // Skip render if overtime
-      if read_last_calc_time(&ctx) >= TIC_OVERTIME {
-        // println("Overtime")
-        tic_prev += TIC // watchme: this might not be right
+      calc_time := calc_timestamp - draw_timestamp
+      if calc_time > TIC_OVERTIME {
+        print("Overtime:", 1.0 / calc_time, ":: ")
+        // tic_counter += TIC // watchme: this might not be right
         continue game_loop
       }
       tic_ready = false
@@ -154,8 +156,8 @@ main :: proc() {
     // Render Phase
     render(&ctx)
     // Only render next pass if undertime
-    draw_time_prev = write_draw_time(&ctx, draw_time_prev)
-    if draw_time_prev - tic_prev >= TIC_MIN_TIME {
+    draw_timestamp = write_draw_time(&ctx, draw_timestamp)
+    if draw_timestamp - tic_counter >= TIC_MIN_TIME {
       tic_ready = true
     }
   }
@@ -452,9 +454,10 @@ delete_game_context :: proc(game_context: GameContext) {
   delete(combatants)
   delete_world(world)
 }
-write_calc_time :: proc(ctx: ^GameContext, end_of_last_frame: f64) {
+write_calc_time :: proc(ctx: ^GameContext, end_of_last_frame: f64) -> f64 {
   ctx := ctx
-  ctx.prev_calc_times[ctx.calc_time_ptr] = rl.GetTime() - end_of_last_frame
+  time := rl.GetTime()
+  ctx.prev_calc_times[ctx.calc_time_ptr] = time - end_of_last_frame
   if ctx.calc_time_ptr < 119 {
     ctx.calc_time_ptr += 1
   } else {
@@ -462,6 +465,7 @@ write_calc_time :: proc(ctx: ^GameContext, end_of_last_frame: f64) {
     gen_avg_calc_time(ctx)
     ctx.fps = 1.0 / (ctx.avg_calc_time + ctx.avg_draw_time) // ish...
   }
+  return time
 }
 read_last_calc_time :: proc(ctx: ^GameContext) -> f64 {
   if ctx.calc_time_ptr == 0 {
