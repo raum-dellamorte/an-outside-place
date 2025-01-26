@@ -11,9 +11,7 @@ At the moment, `odin run .` is what you need to run it. Installing Odin is beyon
 
 ## Goal of this Project
 
-I've had a combat system in my head for a long time that is mostly
-inspired by Parasite Eve but converted into a kind of tactics combat system akin
-to Divinity: Original Sin and the like.
+I've had a combat system in my head for a long time that is mostly inspired by Parasite Eve but converted into a kind of tactics combat system akin to Divinity: Original Sin and the like.
 
 - Everything you can do in combat is an Action.
   - Moving, attacking, using items, casting spells, all Actions.
