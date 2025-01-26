@@ -148,7 +148,7 @@ main :: proc() {
       calc_time := calc_timestamp - draw_timestamp
       if calc_time > TIC_OVERTIME {
         print("Overtime:", 1.0 / calc_time, ":: ")
-        // tic_counter += TIC // watchme: this might not be right
+        draw_timestamp = calc_timestamp
         continue game_loop
       }
       tic_ready = false
