@@ -131,10 +131,6 @@ main :: proc() {
       }
       if len(ctx.combatants) == 0 {
         // Move "Player"
-        // if rl.IsKeyDown(.W) || rl.IsKeyDown(.UP) {player^.pos.z -= player_move_dist}
-        // if rl.IsKeyDown(.S) || rl.IsKeyDown(.DOWN) {player^.pos.z += player_move_dist}
-        // if rl.IsKeyDown(.A) || rl.IsKeyDown(.LEFT) {player^.pos.x -= player_move_dist}
-        // if rl.IsKeyDown(.D) || rl.IsKeyDown(.RIGHT) {player^.pos.x += player_move_dist}
         switch get_direction() {
         case .UpLt:
           player^.pos.z -= player_move_dist / 2.0
