@@ -61,6 +61,7 @@ WorldEnvSOA :: struct {
   name: string,
   color: rl.Color,
   pos: rl.Vector3,
+  rot: rl.Vector3,
   prev_pos: rl.Vector3,
   health: u32,
   actions: ^[dynamic]ActionTracker,
