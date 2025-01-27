@@ -156,7 +156,7 @@ main :: proc() {
     // Render Phase
     render(&ctx)
     // Only render next pass if undertime
-    draw_timestamp = write_draw_time(&ctx, draw_timestamp)
+    draw_timestamp = write_draw_time(&ctx, calc_timestamp, draw_timestamp)
     if draw_timestamp - tic_counter >= TIC_MIN_TIME {
       tic_ready = true
     }
@@ -482,10 +482,11 @@ gen_avg_calc_time :: proc(ctx: ^GameContext) {
   }
   ctx.avg_calc_time = avg / 120.0
 }
-write_draw_time :: proc(ctx: ^GameContext, end_of_last_draw: f64) -> f64 {
+write_draw_time :: proc(ctx: ^GameContext, last_calc_timestamp, last_draw_timestamp: f64) -> f64 {
   ctx := ctx
   time := rl.GetTime()
-  ctx.prev_draw_times[ctx.draw_time_ptr] = time - end_of_last_draw
+  draw_start := last_draw_timestamp > last_calc_timestamp ? last_draw_timestamp : last_calc_timestamp
+  ctx.prev_draw_times[ctx.draw_time_ptr] = time - draw_start
   if ctx.draw_time_ptr < 119 {
     ctx.draw_time_ptr += 1
   } else {
