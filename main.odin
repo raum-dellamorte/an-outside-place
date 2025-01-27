@@ -131,10 +131,29 @@ main :: proc() {
       }
       if len(ctx.combatants) == 0 {
         // Move "Player"
-        if rl.IsKeyDown(.W) || rl.IsKeyDown(.UP) {player^.pos.z -= player_move_dist}
-        if rl.IsKeyDown(.S) || rl.IsKeyDown(.DOWN) {player^.pos.z += player_move_dist}
-        if rl.IsKeyDown(.A) || rl.IsKeyDown(.LEFT) {player^.pos.x -= player_move_dist}
-        if rl.IsKeyDown(.D) || rl.IsKeyDown(.RIGHT) {player^.pos.x += player_move_dist}
+        // if rl.IsKeyDown(.W) || rl.IsKeyDown(.UP) {player^.pos.z -= player_move_dist}
+        // if rl.IsKeyDown(.S) || rl.IsKeyDown(.DOWN) {player^.pos.z += player_move_dist}
+        // if rl.IsKeyDown(.A) || rl.IsKeyDown(.LEFT) {player^.pos.x -= player_move_dist}
+        // if rl.IsKeyDown(.D) || rl.IsKeyDown(.RIGHT) {player^.pos.x += player_move_dist}
+        switch get_direction() {
+        case .UpLt:
+          player^.pos.z -= player_move_dist / 2.0
+          player^.pos.x -= player_move_dist / 2.0
+        case .UpRt:
+          player^.pos.z -= player_move_dist / 2.0
+          player^.pos.x += player_move_dist / 2.0
+        case .DnLt:
+          player^.pos.z += player_move_dist / 2.0
+          player^.pos.x -= player_move_dist / 2.0
+        case .DnRt:
+          player^.pos.z += player_move_dist / 2.0
+          player^.pos.x += player_move_dist / 2.0
+        case .Up: player^.pos.z -= player_move_dist
+        case .Dn: player^.pos.z += player_move_dist
+        case .Lt: player^.pos.x -= player_move_dist
+        case .Rt: player^.pos.x += player_move_dist
+        case .NoOp: {}
+        }
         // Check Collision
         check_for_collisions(&ctx)
       } else { // In Combat!
