@@ -167,7 +167,7 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
       type = rlgl.FLOAT,
       normalized = false,
       stride = size_of(rl.Matrix),
-      pointer = &offset,
+      offset = offset,
     )
     rlgl.SetVertexAttributeDivisor(u32(material.shader.locs[SLI.MATRIX_MODEL] + i), 1)
   }
@@ -220,18 +220,18 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
     // println("!rlgl.EnableVertexArray(mesh.vaoId)")
     // Bind mesh VBO data: vertex position (shader-location = 0)
     rlgl.EnableVertexBuffer(mesh.vboId[0])
-    rlgl.SetVertexAttribute(u32(material.shader.locs[SLI.VERTEX_POSITION]), 3, rlgl.FLOAT, false, 0, ZeroPtr)
+    rlgl.SetVertexAttribute(u32(material.shader.locs[SLI.VERTEX_POSITION]), 3, rlgl.FLOAT, false, 0, 0)
     rlgl.EnableVertexAttribute(u32(material.shader.locs[SLI.VERTEX_POSITION]))
 
     // Bind mesh VBO data: vertex texcoords (shader-location = 1)
     rlgl.EnableVertexBuffer(mesh.vboId[1])
-    rlgl.SetVertexAttribute(u32(material.shader.locs[SLI.VERTEX_TEXCOORD01]), 2, rlgl.FLOAT, false, 0, ZeroPtr)
+    rlgl.SetVertexAttribute(u32(material.shader.locs[SLI.VERTEX_TEXCOORD01]), 2, rlgl.FLOAT, false, 0, 0)
     rlgl.EnableVertexAttribute(u32(material.shader.locs[SLI.VERTEX_TEXCOORD01]))
 
     if material.shader.locs[SLI.VERTEX_NORMAL] != -1 {
       // Bind mesh VBO data: vertex normals (shader-location = 2)
       rlgl.EnableVertexBuffer(mesh.vboId[2])
-      rlgl.SetVertexAttribute(u32(material.shader.locs[SLI.VERTEX_NORMAL]), 3, rlgl.FLOAT, false, 0, ZeroPtr)
+      rlgl.SetVertexAttribute(u32(material.shader.locs[SLI.VERTEX_NORMAL]), 3, rlgl.FLOAT, false, 0, 0)
       rlgl.EnableVertexAttribute(u32(material.shader.locs[SLI.VERTEX_NORMAL]))
     }
 
@@ -239,7 +239,7 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
     if (material.shader.locs[SLI.VERTEX_COLOR] != -1) {
       if (mesh.vboId[3] != 0) {
         rlgl.EnableVertexBuffer(mesh.vboId[3])
-        rlgl.SetVertexAttribute(u32(material.shader.locs[SLI.VERTEX_COLOR]), 4, rlgl.UNSIGNED_BYTE, true, 0, ZeroPtr)
+        rlgl.SetVertexAttribute(u32(material.shader.locs[SLI.VERTEX_COLOR]), 4, rlgl.UNSIGNED_BYTE, true, 0, 0)
         rlgl.EnableVertexAttribute(u32(material.shader.locs[SLI.VERTEX_COLOR]))
       } else {
         // Set default value for unused attribute
@@ -253,14 +253,14 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
     // Bind mesh VBO data: vertex tangents (shader-location = 4, if available)
     if (material.shader.locs[SLI.VERTEX_TANGENT] != -1) {
       rlgl.EnableVertexBuffer(mesh.vboId[4])
-      rlgl.SetVertexAttribute(u32(material.shader.locs[SLI.VERTEX_TANGENT]), 4, rlgl.FLOAT, false, 0, ZeroPtr)
+      rlgl.SetVertexAttribute(u32(material.shader.locs[SLI.VERTEX_TANGENT]), 4, rlgl.FLOAT, false, 0, 0)
       rlgl.EnableVertexAttribute(u32(material.shader.locs[SLI.VERTEX_TANGENT]))
     }
 
     // Bind mesh VBO data: vertex texcoords2 (shader-location = 5, if available)
     if material.shader.locs[SLI.VERTEX_TEXCOORD02] != -1 {
       rlgl.EnableVertexBuffer(mesh.vboId[5])
-      rlgl.SetVertexAttribute(u32(material.shader.locs[SLI.VERTEX_TEXCOORD02]), 2, rlgl.FLOAT, false, 0, ZeroPtr)
+      rlgl.SetVertexAttribute(u32(material.shader.locs[SLI.VERTEX_TEXCOORD02]), 2, rlgl.FLOAT, false, 0, 0)
       rlgl.EnableVertexAttribute(u32(material.shader.locs[SLI.VERTEX_TEXCOORD02]))
     }
 
