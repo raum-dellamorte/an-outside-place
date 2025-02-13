@@ -74,7 +74,8 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
   
   // Bind shader program
   rlgl.EnableShader(material.shader.id)
-
+  defer rlgl.DisableShader()
+  
   // Send required data to shader (matrices, values)
   //-----------------------------------------------------
   // Upload to shader material.colDiffuse
@@ -149,8 +150,8 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
   // It isn't clear which would be reliably faster in all cases and on all platforms,
   // anecdotally glMapBuffer() seems very slow (syncs) while glBufferSubData() seems
   // no faster, since we're transferring all the transform matrices anyway
-  // instancesVboId := rlgl.LoadVertexBuffer(cast (rawptr) &instanceTransforms, cast (i32) instances * size_of(RL_Flat4x4Matrix), false)
-  instancesVboId := rlgl.LoadVertexBuffer(&instanceTransforms[0], cast (i32) instances * size_of(RL_Flat4x4Matrix), false)
+  instancesVboId := rlgl.LoadVertexBuffer(instanceTransforms, cast (i32) instances * size_of(RL_Flat4x4Matrix), false)
+  defer rlgl.UnloadVertexBuffer(instancesVboId)
   
   // Instances transformation matrices are sent to shader attribute location: SLI.MATRIX_MODEL
   for i in 0..<i32(4) {
@@ -197,7 +198,7 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
         rlgl.EnableTexture(material.maps[i].texture.id)
       }
       
-      value = i32(i)
+      value :int = i
       rlgl.SetUniform(material.shader.locs[SLI.MAP_ALBEDO + SLI(i)], &value, i32(SUDT.INT), 1)
     }
   }
@@ -275,7 +276,7 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
     if mesh.indices != ZeroPtr {
       rlgl.DrawVertexArrayElementsInstanced(0, mesh.triangleCount * 3, ZeroPtr, i32(instances))
     } else {
-      rlgl.DrawVertexArrayInstanced(0, mesh.vertexCount, i32(instances))
+      rlgl.DrawVertexArrayInstanced(0, mesh.vertexCount, i32(instances)) // We call this one.
     }
   }
 
@@ -284,8 +285,7 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
     if material.maps[i].texture.id > 0 {
       // Select current shader texture slot
       rlgl.ActiveTextureSlot( i32(i) )
-
-      // Disable texture for active slot
+      
       #partial switch cast(MMI) i {
       case .IRRADIANCE, .PREFILTER, .CUBEMAP:
         rlgl.DisableTextureCubemap()
@@ -299,12 +299,6 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
   rlgl.DisableVertexArray()
   rlgl.DisableVertexBuffer()
   rlgl.DisableVertexBufferElement()
-
-  // Disable shader program
-  rlgl.DisableShader()
-
-  // Remove instance transforms buffer
-  rlgl.UnloadVertexBuffer(instancesVboId)
 }
 
 // rlhSetUniform :: proc(locIndex: int, value: $T, uniformType: SUDT, count: int) {
