@@ -71,7 +71,7 @@ delete_mat_helper :: proc(mh: MaterialHelper) {
 draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^[dynamic]rl.Matrix) {
   instances: int = len(transforms)
   if instances < 1 { return }
-
+  
   // Bind shader program
   rlgl.EnableShader(material.shader.id)
 
@@ -93,7 +93,7 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
       count = 1,
     )
   }
-
+  
   // Upload to shader material.colSpecular (if location available)
   if material.shader.locs[SLI.COLOR_SPECULAR] != -1 {
     // println("COLOR_SPECULAR set uniform")
@@ -148,14 +148,14 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
   
   // Enable mesh VAO to attach new buffer
   rlgl.EnableVertexArray(mesh.vaoId)
-
+  
   // This could alternatively use a static VBO and either glMapBuffer() or glBufferSubData()
   // It isn't clear which would be reliably faster in all cases and on all platforms,
   // anecdotally glMapBuffer() seems very slow (syncs) while glBufferSubData() seems
   // no faster, since we're transferring all the transform matrices anyway
   // instancesVboId := rlgl.LoadVertexBuffer(cast (rawptr) &instanceTransforms, cast (i32) instances * size_of(RL_Flat4x4Matrix), false)
   instancesVboId := rlgl.LoadVertexBuffer(&instanceTransforms[0], cast (i32) instances * size_of(RL_Flat4x4Matrix), false)
-
+  
   // Instances transformation matrices are sent to shader attribute location: SLI.MATRIX_MODEL
   for i in 0..<i32(4) {
     rlgl.EnableVertexAttribute(u32(material.shader.locs[SLI.MATRIX_MODEL] + i))
@@ -171,10 +171,10 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
     )
     rlgl.SetVertexAttributeDivisor(u32(material.shader.locs[SLI.MATRIX_MODEL] + i), 1)
   }
-
+  
   rlgl.DisableVertexBuffer()
   rlgl.DisableVertexArray()
-
+  
   // Accumulate internal matrix transform (push/pop) and view matrix
   // NOTE: In this case, model instance transformation must be computed in the shader
   matModelView = rlgl.GetMatrixTransform() * matView
@@ -281,10 +281,10 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
       rlgl.Viewport(eye * rlgl.GetFramebufferWidth() / 2, 0, rlgl.GetFramebufferWidth() / 2, rlgl.GetFramebufferHeight())
       matModelViewProjection = (matModelView * rlgl.GetMatrixViewOffsetStereo(eye)) * rlgl.GetMatrixProjectionStereo(eye)
     }
-
+    
     // Send combined model-view-projection matrix to shader
     rlgl.SetUniformMatrix(material.shader.locs[SLI.MATRIX_MVP], matModelViewProjection)
-
+    
     // Draw mesh instanced
     if mesh.indices != ZeroPtr {
       rlgl.DrawVertexArrayElementsInstanced(0, mesh.triangleCount * 3, ZeroPtr, i32(instances))
