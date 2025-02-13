@@ -79,7 +79,6 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
   //-----------------------------------------------------
   // Upload to shader material.colDiffuse
   if material.shader.locs[SLI.COLOR_DIFFUSE] != -1 {
-    // println("COLOR_DIFFUSE set uniform")
     values: [4]f32 = {
       f32(material.maps[MMI.ALBEDO].color.r),
       f32(material.maps[MMI.ALBEDO].color.g),
@@ -96,7 +95,6 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
   
   // Upload to shader material.colSpecular (if location available)
   if material.shader.locs[SLI.COLOR_SPECULAR] != -1 {
-    // println("COLOR_SPECULAR set uniform")
     values: [4]f32 = {
       f32(material.maps[SLI.COLOR_SPECULAR].color.r),
       f32(material.maps[SLI.COLOR_SPECULAR].color.g),
@@ -118,19 +116,17 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
   // that modifies it, all use rlPushMatrix() and rlPopMatrix()
   matModel: rl.Matrix = rl.Matrix(1)
   matView: rl.Matrix = rlgl.GetMatrixModelview()
-  matModelView: rl.Matrix = rl.Matrix(1) // This assignment is ignored and replaced with the result of rlgl.GetMatrixTransform() * matView
+  matModelView: rl.Matrix
   matProjection: rl.Matrix = rlgl.GetMatrixProjection()
   
   // Upload view and projection matrices (if locations available)
   if material.shader.locs[SLI.MATRIX_VIEW] != -1 {
-    println("material.shader.locs[SLI.MATRIX_VIEW] ==", material.shader.locs[SLI.MATRIX_VIEW])
     rlgl.SetUniformMatrix(
       locIndex = material.shader.locs[SLI.MATRIX_VIEW], 
       mat = matView,
     )
   }
   if material.shader.locs[SLI.MATRIX_PROJECTION] != -1 {
-    println("material.shader.locs[SLI.MATRIX_PROJECTION] ==", material.shader.locs[SLI.MATRIX_PROJECTION])
     rlgl.SetUniformMatrix(
       locIndex = material.shader.locs[SLI.MATRIX_PROJECTION],
       mat = matProjection,
@@ -181,7 +177,6 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
 
   // Upload model normal matrix (if locations available)
   if material.shader.locs[SLI.MATRIX_NORMAL] != -1 {
-    // println("Upload model normal matrix (if locations available)")
     rlgl.SetUniformMatrix(
       material.shader.locs[SLI.MATRIX_NORMAL], 
       rl.MatrixTranspose(rl.MatrixInvert(matModel)),
@@ -189,10 +184,7 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
   }
   //-----------------------------------------------------
   
-  // intBuffer := (cast ([^]i32) rl.MemAlloc(size_of(i32)))
-  // defer rl.MemFree(intBuffer)
   // Bind active texture maps (if available)
-  value: i32
   for i in 0..<MAX_MATERIAL_MAPS {
     if (material.maps[i].texture.id > 0) {
       // Select current shader texture slot
@@ -201,14 +193,10 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
       #partial switch cast(MMI) i {
       case .IRRADIANCE, .PREFILTER, .CUBEMAP:
         rlgl.EnableTextureCubemap(material.maps[i].texture.id)
-        // println("Enable Texture Cubemap", i)
       case:
         rlgl.EnableTexture(material.maps[i].texture.id)
-        // println("Enable Texture", i)
       }
-      // println("material.shader.locs[SLI.MAP_ALBEDO + SLI(i)] = {}", material.shader.locs[SLI.MAP_ALBEDO + SLI(i)])
       
-      // This ... should ... work ...
       value = i32(i)
       rlgl.SetUniform(material.shader.locs[SLI.MAP_ALBEDO + SLI(i)], &value, i32(SUDT.INT), 1)
     }
@@ -217,7 +205,6 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
   // Try binding vertex array objects (VAO)
   // or use VBOs if not possible
   if !rlgl.EnableVertexArray(mesh.vaoId) {
-    // println("!rlgl.EnableVertexArray(mesh.vaoId)")
     // Bind mesh VBO data: vertex position (shader-location = 0)
     rlgl.EnableVertexBuffer(mesh.vboId[0])
     rlgl.SetVertexAttribute(u32(material.shader.locs[SLI.VERTEX_POSITION]), 3, rlgl.FLOAT, false, 0, 0)
@@ -245,7 +232,7 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
         // Set default value for unused attribute
         // NOTE: Required when using default shader and no VAO support
         value: [4]f32 = { 1, 1, 1, 1 }
-        rlgl.SetVertexAttributeDefault(material.shader.locs[SLI.VERTEX_COLOR], raw_data(value[:]), i32(SADT.VEC4), 4) // can try raw_data([]f32{ 1, 1, 1, 1 }) sometime
+        rlgl.SetVertexAttributeDefault(material.shader.locs[SLI.VERTEX_COLOR], raw_data(value[:]), i32(SADT.VEC4), 4)
         rlgl.DisableVertexAttribute(u32(material.shader.locs[SLI.VERTEX_COLOR]))
       }
     }
@@ -275,7 +262,6 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
     matModelViewProjection := rl.Matrix(1)
     if eyeCount == 1 {
       matModelViewProjection = matModelView * matProjection
-      // println("matModelViewProjection", matModelViewProjection)
     } else {
       // Setup current eye viewport (half screen width)
       rlgl.Viewport(eye * rlgl.GetFramebufferWidth() / 2, 0, rlgl.GetFramebufferWidth() / 2, rlgl.GetFramebufferHeight())
