@@ -209,19 +209,19 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
     rlgl.EnableVertexBuffer(mesh.vboId[0])
     rlgl.SetVertexAttribute(u32(material.shader.locs[SLI.VERTEX_POSITION]), 3, rlgl.FLOAT, false, 0, 0)
     rlgl.EnableVertexAttribute(u32(material.shader.locs[SLI.VERTEX_POSITION]))
-
+    
     // Bind mesh VBO data: vertex texcoords (shader-location = 1)
     rlgl.EnableVertexBuffer(mesh.vboId[1])
     rlgl.SetVertexAttribute(u32(material.shader.locs[SLI.VERTEX_TEXCOORD01]), 2, rlgl.FLOAT, false, 0, 0)
     rlgl.EnableVertexAttribute(u32(material.shader.locs[SLI.VERTEX_TEXCOORD01]))
-
+    
     if material.shader.locs[SLI.VERTEX_NORMAL] != -1 {
       // Bind mesh VBO data: vertex normals (shader-location = 2)
       rlgl.EnableVertexBuffer(mesh.vboId[2])
       rlgl.SetVertexAttribute(u32(material.shader.locs[SLI.VERTEX_NORMAL]), 3, rlgl.FLOAT, false, 0, 0)
       rlgl.EnableVertexAttribute(u32(material.shader.locs[SLI.VERTEX_NORMAL]))
     }
-
+    
     // Bind mesh VBO data: vertex colors (shader-location = 3, if available)
     if (material.shader.locs[SLI.VERTEX_COLOR] != -1) {
       if (mesh.vboId[3] != 0) {
@@ -236,27 +236,27 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
         rlgl.DisableVertexAttribute(u32(material.shader.locs[SLI.VERTEX_COLOR]))
       }
     }
-
+    
     // Bind mesh VBO data: vertex tangents (shader-location = 4, if available)
     if (material.shader.locs[SLI.VERTEX_TANGENT] != -1) {
       rlgl.EnableVertexBuffer(mesh.vboId[4])
       rlgl.SetVertexAttribute(u32(material.shader.locs[SLI.VERTEX_TANGENT]), 4, rlgl.FLOAT, false, 0, 0)
       rlgl.EnableVertexAttribute(u32(material.shader.locs[SLI.VERTEX_TANGENT]))
     }
-
+    
     // Bind mesh VBO data: vertex texcoords2 (shader-location = 5, if available)
     if material.shader.locs[SLI.VERTEX_TEXCOORD02] != -1 {
       rlgl.EnableVertexBuffer(mesh.vboId[5])
       rlgl.SetVertexAttribute(u32(material.shader.locs[SLI.VERTEX_TEXCOORD02]), 2, rlgl.FLOAT, false, 0, 0)
       rlgl.EnableVertexAttribute(u32(material.shader.locs[SLI.VERTEX_TEXCOORD02]))
     }
-
+  
     if mesh.indices != ZeroPtr { rlgl.EnableVertexBufferElement(mesh.vboId[6]) }
   }
-
+  
   eyeCount:i32 = 1
   if rlgl.IsStereoRenderEnabled() { eyeCount = 2 }
-
+  
   for eye in 0..<eyeCount {
     // Calculate model-view-projection matrix (MVP)
     matModelViewProjection := rl.Matrix(1)
