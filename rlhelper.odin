@@ -140,7 +140,7 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
   
   // Fill buffer with instances transformations as float16 arrays
   for i in 0..<instances {
-    instanceTransforms[i] = transmute ([16]f32) transforms[i]
+    instanceTransforms[i] = transmute ([16]f32) rl.MatrixTranspose(transforms[i])
   }
   
   // Enable mesh VAO to attach new buffer
