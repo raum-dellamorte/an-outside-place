@@ -66,7 +66,6 @@ delete_mat_helper :: proc(mh: MaterialHelper) {
 }
 
 // Transcoded from rmodels.c in Raylib source
-// Currently not working, but it compiles!
 // ------------------------------------------
 // Draw multiple mesh instances with material and different transforms
 draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^[dynamic]rl.Matrix) {
