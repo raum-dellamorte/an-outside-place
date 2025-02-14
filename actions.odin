@@ -16,12 +16,12 @@ ActionList :: [?]ActionUnit {
   ActionUnit {
     name = "Sword Attack",
     base_damage = 10,
-    prep = 3, perform = 2, cool = 2
+    prep = 3, perform = 2, cool = 2,
   },
   ActionUnit {
     name = "Bite",
     base_damage = 15,
-    prep = 5, perform = 3, cool = 8
+    prep = 5, perform = 3, cool = 8,
   },
 }
 

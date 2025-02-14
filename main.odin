@@ -3,8 +3,8 @@ package raumortis
 import "core:fmt"
 // import "core:math/linalg"
 // import "core:os"
-import "core:slice"
-import "core:strings"
+// import "core:slice"
+// import "core:strings"
 import "core:strconv"
 
 import rl "vendor:raylib"
@@ -108,7 +108,7 @@ main :: proc() {
       is_mob = true, pos = {-8.0, 0.0, 2.0}, color = rl.DARKPURPLE,
       is_alive = true, health = 70,
       actions = make_action_tracker_list({ { id = 2 } }),
-    }
+    },
   )
   player := &ctx.world[0]
   player_speed : f32 = 10.0
@@ -192,9 +192,8 @@ render :: proc(ctx: ^GameContext) {
 
 draw_gui :: proc(ctx: ^GameContext) {
   // Health and FPS and other garbage for the player to read
-  // avg := avg_draw_time(ctx)
   rl.DrawText(rl.TextFormat("FPS: % 6.02f", ctx.fps), 50, 50, 20, rl.RED)
-  // rl.DrawFPS(50,50)
+  // player := &ctx.world[get_active_player(ctx)]
 }
 
 draw_world :: proc(ctx: ^GameContext) {
@@ -229,7 +228,7 @@ check_for_collisions :: proc(ctx: ^GameContext) {
     if mob.is_mob && mob.is_alive {
       collision = rl.CheckCollisionBoxes(
         {player.pos - 0.5,player.pos + 0.5}, // Assumes Size is 1x1x1
-        {mob.pos - 0.5, mob.pos + 0.5}
+        {mob.pos - 0.5, mob.pos + 0.5},
       )
       if collision {
         // println("Player Collided With", mob.pos)
@@ -303,7 +302,7 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
             entity.action_is_blocking = action_tracker.id
             println(
               entity.name, "focuses solely on", action.name,
-              "against", action_focus.name
+              "against", action_focus.name,
             )
             action_tracker.timer.seconds += 1
           } else if action.blocking_prep == 0 {
@@ -326,11 +325,11 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
             entity.action_is_blocking = action_tracker.id
             println(
               entity.name, "uses", action.name,
-              "against", action_focus.name
+              "against", action_focus.name,
             )
             println(
               entity.name, "attacks", action_focus.name,
-              "for", action.base_damage, "damage over", action.perform,"seconds."
+              "for", action.base_damage, "damage over", action.perform,"seconds.",
             )
           }
           if action.perform == action_tracker.timer.seconds {
@@ -361,7 +360,7 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
               action_focus.name,
               "took", damage_this_tic,"damage.")
             println(
-              action_focus.name,"Health:", action_focus.health, ":"
+              action_focus.name,"Health:", action_focus.health, ":",
             )
           }
           action_tracker.timer.seconds += 1
@@ -371,7 +370,7 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
             entity.action_is_blocking = action_tracker.id
             println(
               entity.name, "is paralyzed after using", action.name,
-              "for", action.blocking_cool, "seconds."
+              "for", action.blocking_cool, "seconds.",
             )
             action_tracker.timer.seconds += 1
           } else if action.blocking_cool == 0 {
@@ -390,7 +389,7 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
           if action.cool != 0 && action_tracker.timer.seconds == 0 {
             println(
               entity.name, "cannot use", action.name,
-              "for", action.cool, "seconds."
+              "for", action.cool, "seconds.",
             )
             action_tracker.timer.seconds += 1
           } else if action.cool == action_tracker.timer.seconds {

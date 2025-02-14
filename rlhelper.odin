@@ -1,6 +1,7 @@
 package raumortis
 
-// import "core:math/linalg" // temp for debugging
+import "core:log"
+import math "core:math/linalg"
 // import "core:os"
 // import "core:slice"
 // import "core:strings"
@@ -140,7 +141,7 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
   
   // Fill buffer with instances transformations as float16 arrays
   for i in 0..<instances {
-    instanceTransforms[i] = transmute ([16]f32) rl.MatrixTranspose(transforms[i])
+    instanceTransforms[i] = transmute ([16]f32) math.transpose(transforms[i])
   }
   
   // Enable mesh VAO to attach new buffer
@@ -175,7 +176,7 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
   // Accumulate internal matrix transform (push/pop) and view matrix
   // NOTE: In this case, model instance transformation must be computed in the shader
   // matModelView = rlgl.GetMatrixTransform() * matView
-  matModelView = rlhMatrixMultiply(rlgl.GetMatrixTransform(),matView)
+  matModelView = transmatmult(rlgl.GetMatrixTransform(),matView)
   
   // Upload model normal matrix (if locations available)
   if material.shader.locs[SLI.MATRIX_NORMAL] != -1 {
@@ -264,13 +265,13 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
     matModelViewProjection := rl.Matrix(1)
     if eyeCount == 1 {
       // matModelViewProjection = matModelView * matProjection // This doesn't work
-      matModelViewProjection = rlhMatrixMultiply(matModelView, matProjection)
+      matModelViewProjection = transmatmult(matModelView, matProjection)
     } else {
       // Setup current eye viewport (half screen width)
       rlgl.Viewport(eye * rlgl.GetFramebufferWidth() / 2, 0, rlgl.GetFramebufferWidth() / 2, rlgl.GetFramebufferHeight())
-      matModelViewProjection = rlhMatrixMultiply(
-        rl.MatrixTranspose(rlhMatrixMultiply(matModelView, rlgl.GetMatrixViewOffsetStereo(eye))),
-        rlgl.GetMatrixProjectionStereo(eye)
+      matModelViewProjection = transmatmult(
+        rl.MatrixTranspose(transmatmult(matModelView, rlgl.GetMatrixViewOffsetStereo(eye))),
+        rlgl.GetMatrixProjectionStereo(eye),
       )
     }
     
@@ -321,7 +322,7 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
 //   }
 // }
 
-// // This is not needed. transpose ([16]f32) rl.MatrixTranspose(row_major_matrix) is equivalent.
+// // This is not needed. transmute ([16]f32) rl.MatrixTranspose(row_major_matrix) is equivalent.
 // rlhMatrixToFloatV :: proc(mat: #row_major matrix[4,4]f32) -> RL_Flat4x4Matrix {
 //   out : [16]f32
 //   out[0]  = mat[0,0]
@@ -343,7 +344,7 @@ draw_mesh_instanced :: proc (mesh: rl.Mesh, material: rl.Material, transforms: ^
 //   return out
 // }
 
-rlhMatrixMultiply :: proc(left, right: #row_major matrix[4,4]f32) -> #row_major matrix[4,4]f32 {
+transmatmult :: proc(left, right: #row_major matrix[4,4]f32) -> #row_major matrix[4,4]f32 {
   result : #row_major matrix[4,4]f32
   
   // result.m0 = left.m0*right.m0 + left.m1*right.m4 + left.m2*right.m8 + left.m3*right.m12;
@@ -387,42 +388,57 @@ rlhMatrixMultiply :: proc(left, right: #row_major matrix[4,4]f32) -> #row_major 
 // From raymath.h: "In memory order, row0 is [m0 m4 m8 m12] but in semantic math row0 is [m0 m1 m2 m3]"
 // draw_mesh_instanced now works using Raylib's MatrixMultiply ported to the Odin version above.
 import "core:testing"
-// import oi "base:intrinsics"
+import "base:intrinsics"
+rm_mat1 :: #row_major matrix[4,4]f32 {
+   2., 3., 5., 7.,
+  11.,13.,17.,19.,
+  23.,29.,31.,37.,
+  41.,43.,47.,53.,
+}
+cm_mat1 :: matrix[4,4]f32 {
+   2., 3., 5., 7.,
+  11.,13.,17.,19.,
+  23.,29.,31.,37.,
+  41.,43.,47.,53.,
+}
+rm_mat2 :: #row_major matrix[4,4]f32 {
+   .2, .3, .5, .7,
+  .11,.13,.17,.19,
+  .23,.29,.31,.37,
+  .41,.43,.47,.53,
+}
+cm_mat2 :: matrix[4,4]f32 {
+   .2, .3, .5, .7,
+  .11,.13,.17,.19,
+  .23,.29,.31,.37,
+  .41,.43,.47,.53,
+}
 @(test)
-test_rlhMatrixMultiply :: proc(^testing.T) {
+tests :: proc(^testing.T) {
   ident := rl.Matrix(1)
+  log.info("Test")
+  rlhm := transmatmult(rm_mat1, rm_mat2)
+  cm_mul_odin := cm_mat1 * cm_mat2
+  rm_mul_odin := rm_mat1 * rm_mat2
+  cm_tpose_mul_odin := math.transpose(math.transpose(cm_mat1) * math.transpose(cm_mat2))
+  rm_tpose_mul_odin := math.transpose(math.transpose(rm_mat1) * math.transpose(rm_mat2))
   assert(ident * ident == ident)
-  assert(rlhMatrixMultiply(ident,ident) == ident)
-  rm_mat1 := #row_major matrix[4,4]f32 {
-     2., 3., 5., 7.,
-    11.,13.,17.,19.,
-    23.,29.,31.,37.,
-    41.,43.,47.,53.,
-  }
-  cm_mat1 := matrix[4,4]f32 {
-     2., 3., 5., 7.,
-    11.,13.,17.,19.,
-    23.,29.,31.,37.,
-    41.,43.,47.,53.,
-  }
-  rm_mat2 := #row_major matrix[4,4]f32 {
-     .2, .3, .5, .7,
-    .11,.13,.17,.19,
-    .23,.29,.31,.37,
-    .41,.43,.47,.53,
-  }
-  cm_mat2 := matrix[4,4]f32 {
-     .2, .3, .5, .7,
-    .11,.13,.17,.19,
-    .23,.29,.31,.37,
-    .41,.43,.47,.53,
-  }
-  assert(rm_mat1 * rm_mat2 != rlhMatrixMultiply(rm_mat1, rm_mat2))
-  assert(transmute (#row_major matrix[4,4]f32) (cm_mat1 * cm_mat2) != rlhMatrixMultiply(rm_mat1, rm_mat2))
-  assert(cast (#row_major matrix[4,4]f32) (cm_mat1 * cm_mat2) != rl.MatrixTranspose(rlhMatrixMultiply(rm_mat1, rm_mat2)))
-  assert(rl.MatrixTranspose(rm_mat1 * rm_mat2) != rlhMatrixMultiply(rm_mat1, rm_mat2))
-  assert(rl.MatrixTranspose(rm_mat1) * rl.MatrixTranspose(rm_mat2) != rlhMatrixMultiply(rm_mat1, rm_mat2))
-  // assert(rlhMatrixToFloatV(rm_mat1) != oi.matrix_flatten(rm_mat1))
+  assert(transmatmult(ident,ident) == ident)
+  assert(transmatmult(rm_mat1,ident) == rm_mat1)
+  assert(rlhm != rm_mul_odin)
+  assert(rm_tpose_mul_odin == rlhm) // We did it!
+  assert(cast (#row_major matrix[4,4]f32) (cm_mat1 * cm_mat2) != rlhm)
+  assert(transmute (#row_major matrix[4,4]f32) (transmute (matrix[4,4]f32) rm_mat1 * transmute (matrix[4,4]f32) rm_mat2) != rlhm)
+  assert(transmute (#row_major matrix[4,4]f32) (cast (matrix[4,4]f32) rm_mat1 * cast (matrix[4,4]f32) rm_mat2) != rlhm)
+  assert(cast (#row_major matrix[4,4]f32) (cm_mat1 * cm_mat2) != rl.MatrixTranspose(rlhm))
+  assert(rl.MatrixTranspose(rm_mat1 * rm_mat2) != transmatmult(rm_mat1, rm_mat2))
+  assert(rl.MatrixTranspose(rm_mat1) * rl.MatrixTranspose(rm_mat2) != transmatmult(rm_mat1, rm_mat2))
+  // assert(rlhMatrixToFloatV(rm_mat1) != matrix_flatten(rm_mat1))
   // assert((transmute ([16]f32) rl.MatrixTranspose(rm_mat1)) == rlhMatrixToFloatV(rm_mat1))
+  log.info("transmatmult(rm_mat1, rm_mat2)",rlhm)
+  log.info("native col major:",cm_mul_odin)
+  log.info("native col major transpose(transpose(mat) * transpose(mat)):",cm_tpose_mul_odin)
+  log.info("native row major transpose(transpose(mat) * transpose(mat)):",rm_tpose_mul_odin)
+  log.info("native row major:",rm_mul_odin)
 }
 
