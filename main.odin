@@ -329,7 +329,7 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
             )
             println(
               entity.name, "attacks", action_focus.name,
-              "for", action.base_damage, "damage over", action.perform,"seconds.",
+              "for", action.action.base_damage, "damage over", action.perform,"seconds.",
             )
           }
           if action.perform == action_tracker.timer.seconds {
@@ -338,9 +338,9 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
             action_tracker.timer.seconds = 0
             continue stage_loop
           }
-          damage_this_tic := action.base_damage / action.perform
+          damage_this_tic := action.action.base_damage / action.perform
           if action.perform - action_tracker.timer.seconds == 1 {
-            damage_this_tic += (action.base_damage % damage_this_tic)
+            damage_this_tic += (action.action.base_damage % damage_this_tic)
           }
           if action_focus.health <= damage_this_tic {
             action_focus.health = 0
