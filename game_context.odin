@@ -44,7 +44,6 @@ GameContext :: struct {
 delete_game_context :: proc(game_context: GameContext) {
   ctx := game_context
   world := ctx.world^
-  // ctx.world = nil
   combatants := ctx.combatants^
   delete(combatants)
   delete_world(world)
