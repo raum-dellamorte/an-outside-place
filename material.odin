@@ -54,7 +54,7 @@ MatAssign :: struct {
 // shader for the nth, with respect to assignments[n], Material, along with the third Texture,
 // texures[2], and does not assign a color, thus leaving it at a zero value. And, while I'm
 // pedantically documenting, value is set directly.
-gen_materials :: proc(assignments: []MatAssign, shaders: []rl.Shader, textures: []TextureItem, colors: []rl.Color) -> MaterialHelper {
+gen_materials :: proc(assignments: []MatAssign, shaders: ^[dynamic]ShaderSet, textures: []TextureItem, colors: []rl.Color) -> MaterialHelper {
   sz := len(assignments)
   matmaps := make([dynamic][11]rl.MaterialMap,sz,sz)
   mats := make([dynamic]rl.Material,sz,sz)
@@ -62,14 +62,14 @@ gen_materials :: proc(assignments: []MatAssign, shaders: []rl.Shader, textures: 
     matmaps[i] = [11]rl.MaterialMap {}
     mats[i].maps = raw_data(matmaps[i][:])
     if a.shader > 0 && a.shader <= len(shaders) {
-      mats[i].shader = shaders[a.shader - 1]
+      mats[i].shader = shaders[a.shader - 1].shader
     }
     if len(a.texture) > 0 && a.texture[0] != "" {
       if tex, ok := get_texture_by_name(textures, a.texture[0]); ok == .Ok {
         mats[i].maps[0].texture = tex
       }
     }
-    if a.color > 0 && a.color <= len(colors) {
+    if len(colors) > 0 && a.color > 0 && a.color <= len(colors) {
       mats[i].maps[0].color = colors[a.color - 1]
     }
     mats[i].maps[0].value = a.value

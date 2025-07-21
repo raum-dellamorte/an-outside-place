@@ -1,5 +1,7 @@
 package raumortis
 
+ActionTrackers :: [dynamic]ActionTracker
+
 make_action_tracker_list :: proc(action_trackers: []ActionTracker) -> ^[dynamic]ActionTracker {
   out := new([dynamic]ActionTracker)
   out^ = make([dynamic]ActionTracker,0,6)
