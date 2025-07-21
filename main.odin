@@ -14,6 +14,7 @@ import rl "vendor:raylib"
 print :: fmt.print
 printf :: fmt.printf
 println :: fmt.println
+printfln :: fmt.printfln
 
 main :: proc() {
   // Constants
