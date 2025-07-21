@@ -157,6 +157,24 @@ data_to_world :: proc(data: string) -> (world: ^WorldEnvSOA) {
             ptr := cast(^string)rawptr(uintptr(any(entity).data) + _fld.offset)
             ptr^ = fld_data
             println("Did we write? entity.name =", entity.name)
+          case type_info_of(u32):
+            ptr := cast(^u32)rawptr(uintptr(any(entity).data) + _fld.offset)
+            data, ok := parse_int(fld_data)
+            if ok {
+              ptr^ = cast(u32)data
+            } else {
+              println("parse_int failed:", line)
+            }
+            printfln("Did we write? entity.%v = %v", name, struct_field_value_by_name(entity, name).(u32))
+          case type_info_of(Maybe(u32)):
+            ptr := cast(^Maybe(u32))rawptr(uintptr(any(entity).data) + _fld.offset)
+            data, ok := parse_int(fld_data)
+            if ok {
+              ptr^ = cast(u32)data
+            } else {
+              println("parse_int failed:", line)
+            }
+            printfln("Did we write? entity.%v = %v", name, struct_field_value_by_name(entity, name).(Maybe(u32)))
           case type_info_of(rl.Color):
             println("Struct field rl.Color name is", name)
             // we have parse_uint, we CAN do this.
