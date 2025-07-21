@@ -5,6 +5,7 @@ import "core:fmt"
 // import "core:os"
 // import "core:slice"
 // import "core:strings"
+// import "core:encoding/json"
 import "core:strconv"
 
 import rl "vendor:raylib"
@@ -110,6 +111,18 @@ main :: proc() {
     },
   )
   
+  // wesoa, err := json.marshal(
+  //   WorldEnvEntity{
+  //     name = "Purple",
+  //     is_mob = true, pos = {-8.0, 0.0, 2.0}, color = rl.DARKPURPLE,
+  //     is_alive = true, health = 70,
+  //     actions = make_action_tracker_list({ { id = 2 } }),
+  //   }, {spec = .JSON5, pretty = true, use_enum_names = true})
+  // if err == nil {
+  //   printf("%s", wesoa)
+  // } else {
+  //   fmt.eprintfln("Unable to marshal JSON: %v", err)
+  // }
   save_data, err := world_to_data(ctx.world)
   if err == nil {
     print(save_data)
