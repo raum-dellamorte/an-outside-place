@@ -13,7 +13,6 @@ import rl "vendor:raylib"
 print :: fmt.print
 printf :: fmt.printf
 println :: fmt.println
-parse_int :: strconv.parse_int
 
 main :: proc() {
   // Constants
@@ -80,7 +79,7 @@ main :: proc() {
   // defer delete_mat_helper(cube_mat_helper)
   
   // cube.materials = cube_mat_helper.pointer
-    
+  
   // Game Vars
   ctx := make_game_context()
   defer delete_game_context(ctx)
@@ -110,6 +109,13 @@ main :: proc() {
       actions = make_action_tracker_list({ { id = 2 } }),
     },
   )
+  
+  save_data, err := world_to_data(ctx.world)
+  if err == nil {
+    print(save_data)
+  }
+  loaded_data := data_to_world(save_data)
+  
   player := &ctx.world[0]
   player_speed : f32 = 10.0
   player_move_dist : f32 = player_speed / 60.0

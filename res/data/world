@@ -1,0 +1,35 @@
+Entity{
+  name: The Player
+  color: Color{r:200, g:100, b:120, a:255}
+  health: 100
+  Props{
+    is_cam_target,is_player,is_alive,
+  }
+}
+Entity{
+  name: Blue
+  color: Color{r:0, g:121, b:241, a:255}
+  pos: Vector3{x:10, y:0, z:-5}
+  health: 30
+  Props{
+    is_mob,is_alive,
+  }
+}
+Entity{
+  name: Green
+  color: Color{r:0, g:228, b:48, a:255}
+  pos: Vector3{x:4, y:0, z:-3}
+  health: 50
+  Props{
+    is_mob,is_alive,
+  }
+}
+Entity{
+  name: Purple
+  color: Color{r:112, g:31, b:126, a:255}
+  pos: Vector3{x:-8, y:0, z:2}
+  health: 70
+  Props{
+    is_mob,is_alive,
+  }
+}
