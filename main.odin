@@ -24,63 +24,7 @@ main :: proc() {
   rl.InitWindow(i32(WIN.x), i32(WIN.y), "An Outside Place")
   defer rl.CloseWindow()
   
-  // rl.SetTargetFPS(60)
-  
-  // // Shaders
-  // rope_trail_shader := rl.LoadShader(
-  //   "res/shaders/rope_trail_instanced.vs",
-  //   "res/shaders/rope_trail_instanced.fs",
-  // )
-  // defer rl.UnloadShader(rope_trail_shader) // Segfaults if you don't defer rl.WindowClose()
-  // rope_trail_shader.locs[SLI.MATRIX_MVP] = i32(
-  //   rl.GetShaderLocation(rope_trail_shader, "mvp"),
-  // )
-  // rope_trail_shader.locs[SLI.MATRIX_MODEL] = i32(
-  //   rl.GetShaderLocationAttrib(rope_trail_shader, "instance"),
-  // )
-  // rope_trail_shader_yOffset := rl.GetShaderLocation(rope_trail_shader, "yOffset")
-  // rope_trail_shader.locs[SLI.MATRIX_VIEW] = i32(
-  //   rl.GetShaderLocation(rope_trail_shader, "view"),
-  // )
-  // rope_trail_shader.locs[SLI.MATRIX_PROJECTION] = i32(
-  //   rl.GetShaderLocation(rope_trail_shader, "projection"),
-  // )
-  // player_shader := rl.LoadShader("res/shaders/player.vs", "res/shaders/player.fs")
-  // defer rl.UnloadShader(player_shader)
-  // player_shader.locs[SLI.MATRIX_MVP] = i32(rl.GetShaderLocation(player_shader, "mvp"))
-  // player_shader.locs[SLI.MATRIX_VIEW] = i32(rl.GetShaderLocation(player_shader, "view"))
-  // player_shader.locs[SLI.MATRIX_PROJECTION] = i32(
-  //   rl.GetShaderLocation(player_shader, "projection"),
-  // )
-  // // Shaders list
-  // shaders: []rl.Shader = {player_shader, rope_trail_shader}
-  
-  // //Textures
-  // textures := [?]rl.Texture {
-  //   rl.LoadTexture("CubeTex.png"),
-  //   rl.LoadTextureFromImage(rl.GenImageColor(256, 256, rl.RED)),
-  //   rl.LoadTextureFromImage(rl.GenImageColor(256, 256, rl.ORANGE)),
-  // }
-  // // Load Models
-  // player := rl.LoadModel("cube-1x1x1.obj")
-  // _ = player // because reasons
-  // // player_tex_bak := cube.materials[0].maps[MMI.ALBEDO].texture // Backup included Texture for no reason
-  // cube := rl.LoadModel("cube-tex-atlas.obj")
-  
-  // // Material Assignments
-  // player_assign := MatAssign{1, Tex[.Player], 1, 0.0}
-  // rope_trail_assign := MatAssign{2, Tex[.Rope], 1, 0.0}
-  
-  // // Fix Cube Materials
-  // cube_mat_helper := gen_materials(
-  //   {player_assign, rope_trail_assign},// it seems you must keep the vars you point to
-  //   shaders,                           // in scope. makes sense
-  //   textures[:],
-  //   colors,
-  // )
-  // defer delete_mat_helper(cube_mat_helper)
-  
-  // cube.materials = cube_mat_helper.pointer
+  rl.SetTargetFPS(60)
   
   // Game Vars
   ctx := make_game_context()
@@ -175,7 +119,7 @@ main :: proc() {
       } else { // In Combat!
         process_combat_tic(&ctx)
       }
-      // Move Camera
+      // Move.studiostudio. Camera
       cam_follow_world_target(&ctx)
       calc_timestamp = write_calc_time(&ctx, draw_timestamp)
       tic_counter += TIC
@@ -202,7 +146,7 @@ render :: proc(ctx: ^GameContext) {
   rl.BeginDrawing()
   defer rl.EndDrawing()
   rl.ClearBackground(rl.Color {50,20,20,255} )
-  { rl.BeginMode3D(ctx.camera)
+  { rl.BeginMode3D(ctx.studio.camera)
     defer rl.EndMode3D()
     draw_world(ctx)
   } // End 3D Mode
@@ -280,7 +224,7 @@ cam_follow_world_target :: proc(ctx: ^GameContext) {
     }
   }
   if target != nil {
-    move_cam(&ctx.camera, target)
+    move_cam(&ctx.studio.camera, target)
   }
 }
 
