@@ -76,16 +76,48 @@ world_to_data :: proc(
         val := struct_field_value(thing, fld).(Maybe(u32)).? or_continue
         iostr_indent(w)
         wprintfln(w, "%v: %v", fld.name, val)
-      case fld.type == type_info_of(rl.Color):
-        val := struct_field_value(thing, fld).(rl.Color)
-        if val == cast(rl.Color){} { continue }
-        write_indent(w)
-        wprintfln(w, "%v: Color{{r:%i, g:%i, b:%i, a:%i}}", fld.name, val.r, val.g, val.b, val.a)
-      case fld.type == type_info_of(rl.Vector3):
-        val := struct_field_value(thing, fld).(rl.Vector3)
-        if val == cast(rl.Vector3){} { continue }
-        write_indent(w)
-        wprintfln(w, "%v: Vector3{{x:%v, y:%v, z:%v}}", fld.name, val.x, val.y, val.z)
+      // case fld.type == type_info_of(rl.Color):
+      //   val := struct_field_value(thing, fld).(rl.Color)
+      //   if val == cast(rl.Color){} { continue }
+      //   write_indent(w)
+      //   wprintfln(w, "%v: Color{{r:%i, g:%i, b:%i, a:%i}}", fld.name, val.r, val.g, val.b, val.a)
+      case is_array(fld.type): // fld.type == type_info_of(rl.Vector3):
+        a_ptr := rawptr(uintptr(any(thing).data) + fld.offset)
+        iostr_indent(w)
+        wprintfln(w, "%v: [", fld.name)
+        indent_ctl(.IncIndent)
+        iostr_indent(w)
+        iostr_for_each_raw(w, a_ptr, fld.type, proc(w: io.Stream, v: any) {
+          wprintf(w, "%v,", v)
+        })
+        // case runtime.Type_Info_Named:
+        //   a := cast([^]type_of(v.elem.id))a_ptr
+        //   for i in 0..<c {
+        //     wprintf(w, "%v,", a[i])
+        //   }
+        // }
+        wprintln(w)
+        indent_ctl(.DecIndent)
+        iostr_indent(w)
+        wprintln(w, "]")
+        // val := struct_field_value(thing, fld).(rl.Vector3)
+        // if val == cast(rl.Vector3){} { continue }
+        // write_indent(w)
+        // wprintfln(w, "%v: Vector3{{x:%v, y:%v, z:%v}}", fld.name, val.x, val.y, val.z)
+      case reflect.is_pointer(fld.type) && reflect.is_dynamic_array(fld.type.variant.(Type_Info_Pointer).elem):
+        val := struct_field_value(thing, fld).(^ActionTrackers)
+        iostr_indent(w)
+        wprintln(w, fld.name, ": [", sep = "")
+        indent_ctl(.IncIndent)
+        for item in val^ {
+          // write_indent(w)
+          // wprintln(w, item, ",", sep = "")
+          t := type_info_of(type_of(item)).variant
+          iostr_struct(w, item, &t.(Type_Info_Named))
+        }
+        indent_ctl(.DecIndent)
+        iostr_indent(w)
+        wprintln(w, "]", sep = "")
       }
     }
     // boolean Properties
@@ -117,26 +149,29 @@ world_to_data :: proc(
   return sbprint(&b), nil
 }
 
-data_to_world :: proc(data: string) -> (world: ^WorldEnvSOA) {
-  world = make_world_env_soa()
+data_to_world :: proc(world: ^WorldEnvSOA, data: string) {
+  // world = make_world_env_soa()
   lines, _ := strings.split_lines(data)
-  // entity_type_info := type_info_of(WorldEnvEntity).variant.(runtime.Type_Info_Struct)
   Stage :: enum {
-    Entity,
-    Props,
     New,
+    Entity,
+    Struct,
+    Array,
+    Props,
   }
-  stage := Stage.New
+  stage := [10]Stage{}
+  indent_ctl(.ResetIndent)
   entity:WorldEnvEntity = {}
+  entity.actions = make_action_tracker_list()
   for line in lines {
     line := strip_left(line)
     if line == "" { continue }
-    switch stage {
+    switch stage[indent_ctl()] {
     case .New:
       switch line {
       case "Entity{":
         println("Entity found!")
-        stage = .Entity
+        stage[indent_ctl(.IncIndent)] = .Entity
       case: println("Oops, you broke it.")
       }
     case .Entity: 
@@ -144,58 +179,80 @@ data_to_world :: proc(data: string) -> (world: ^WorldEnvSOA) {
       case "}":
         append_soa(world, entity)
         entity = WorldEnvEntity{}
-        stage = .New
+        indent_ctl(.DecIndent)
         continue
       case "Props{":
-        stage = .Props
+        stage[indent_ctl(.IncIndent)] = .Props
         continue
       }
+      struct_match, _ := regex.create("[A-Za-z_]*{{$")
       field_match, _ := regex.create(" *([a-z_]+): +(.+)$")
-      res, _ := regex.match(field_match, line)
-      if len(res.groups) < 3 { continue }
-      for grp in res.groups[1:] {
+      name_and_data, _ := regex.match(field_match, line)
+      if len(name_and_data.groups) < 3 { continue }
+      for grp in name_and_data.groups[1:] {
         print(grp, " ", sep = "")
       }
       println()
-      fld_name := res.groups[1] 
-      fld_data := res.groups[2]
-      for name in struct_field_names(WorldEnvEntity) {
+      fld_name := name_and_data.groups[1] 
+      fld_data := name_and_data.groups[2]
+      _, struct_test := regex.match(struct_match, fld_data)
+      if struct_test {
+        stage[indent_ctl(.IncIndent)] = .Struct
+        continue
+      }
+      fields: for name in struct_field_names(WorldEnvEntity) {
         if name == fld_name {
           _fld := struct_field_by_name(WorldEnvEntity, name)
           switch type_info_of(_fld.type.id) {
           case type_info_of(string):
-            ptr := cast(^string)rawptr(uintptr(any(entity).data) + _fld.offset)
-            ptr^ = fld_data
-            println("Did we write? entity.name =", entity.name)
+            write_struct_data(entity, _fld.offset, fld_data)
+            printfln("Did we write? entity.%v = %v", name, entity.name)
+            continue fields
           case type_info_of(u32):
-            ptr := cast(^u32)rawptr(uintptr(any(entity).data) + _fld.offset)
             data, ok := parse_int(fld_data)
             if ok {
-              ptr^ = cast(u32)data
+              write_struct_data(entity, _fld.offset, cast(u32)data)
             } else {
               println("parse_int failed:", line)
             }
             printfln("Did we write? entity.%v = %v", name, struct_field_value_by_name(entity, name).(u32))
+            continue fields
           case type_info_of(Maybe(u32)):
-            ptr := cast(^Maybe(u32))rawptr(uintptr(any(entity).data) + _fld.offset)
             data, ok := parse_int(fld_data)
             if ok {
-              ptr^ = cast(u32)data
+              data: Maybe(u32) = cast(u32)data
+              write_struct_data(entity, _fld.offset, data)
             } else {
               println("parse_int failed:", line)
             }
             printfln("Did we write? entity.%v = %v", name, struct_field_value_by_name(entity, name).(Maybe(u32)))
-          case type_info_of(rl.Color):
-            println("Struct field rl.Color name is", name)
-            // we have parse_uint, we CAN do this.
-          case type_info_of(rl.Vector3):
-            println("Struct field rl.Vector3 name is", name)
+            continue fields
+          // case type_info_of(rl.Color):
+          //   println("Struct field rl.Color name is", name)
+          //   // we have parse_uint, we CAN do this.
+          // case type_info_of(rl.Vector3):
+          //   println("Struct field rl.Vector3 name is", name)
+          // case type_info_of(^ActionTrackers):
+          //   
+          case: check_and_write_entity_struct_field(&entity, name, fld_data)
+          }
         }
       }
+    case .Struct:
+      if line == "}" {
+        indent_ctl(.DecIndent)
+        continue
       }
+      
+    case .Array:
+      if line == "]" {
+        indent_ctl(.DecIndent)
+        continue
+      }
+      
     case .Props: 
       if line == "}" {
-        stage = .Entity
+        indent_ctl(.DecIndent)
         continue
       }
       props := strings.split(line,",")
@@ -217,7 +274,59 @@ data_to_world :: proc(data: string) -> (world: ^WorldEnvSOA) {
       }
     }
   }
-  return
+}
+
+check_and_write_entity_struct_field :: proc(entity: ^WorldEnvEntity, field_name: string, line: string,) {
+  fld := struct_field_by_name(type_of(entity^), field_name)
+  _s := take_thru(line, is_open_brace)[1]
+  if len(_s) == 0 { println("take_thru failed", line, _s, sep = ";"); return }
+  _s = take_until(_s, is_close_brace)[0]
+  if len(_s) == 0 { println("take_until failed", line, _s, sep = ";"); return }
+  s_flds, _ := strings.split(_s,",")
+  for s_fld, idx in s_flds {
+    nv, _ := strings.split(s_fld, ":")
+    if len(nv) != 2 { println("split should have made 2 strings:", s_fld); return }
+    fld_name := nv[0]
+    fld_data := nv[1]
+    #partial switch info in fld.type.variant {
+    case Type_Info_Named:
+      for name in struct_field_names(fld.type.id) {
+        if name == fld_name {
+          _fld := struct_field_by_name(fld.type.id, name)
+          switch type_info_of(_fld.type.id) {
+          case type_info_of(u32):
+            data, ok := parse_int(fld_data)
+            if ok {
+              println("write u32 field", cast(u32)data)
+              write_struct_data(entity^, fld.offset + _fld.offset, data)
+            } else {
+              println("parse_int failed:", line)
+            }
+          case type_info_of(f32):
+            data, ok := parse_f32(fld_data)
+            if ok {
+              println("write f32 field", data)
+              write_struct_data(entity^, fld.offset + _fld.offset, data)
+            } else {
+              println("parse_f32 failed:", line)
+            }
+          }
+        }
+      }
+    case Type_Info_Array:
+      if info.elem == type_info_of(f32) {
+        data, ok := parse_f32(fld_data)
+        if ok {
+          println("write f32 array", idx, data)
+          write_struct_data(entity^, fld.offset + uintptr(size_of(f32) * idx), data)
+        } else {
+          println("parse_f32 failed:", line)
+        }
+      }
+    case: println("info: ", info)
+    }
+  }
+  println("Did we write? entity", entity^)
 }
 
 IndentStr :: "  "
@@ -370,6 +479,11 @@ strip_left :: proc(s: string) -> string {
 
 cat_to_cstr :: proc(s: []string) -> cstring {
   return unsafe_string_to_cstring(concatenate(s))
+}
+
+write_struct_data :: proc(thing: any, offset: uintptr, data: $T, maybe := false) {
+  ptr := cast(^T)rawptr(uintptr(thing.data) + offset)
+  ptr^ = data
 }
 
 take_while :: proc(s: string, f: proc(rune: rune) -> bool) -> [2]string {

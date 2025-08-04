@@ -29,6 +29,8 @@ main :: proc() {
   // Game Vars
   ctx := make_game_context()
   defer delete_game_context(ctx)
+  world_file := #load("res/data/world", string)
+  // data_to_world(ctx.world, world_file)
   append_soa(ctx.world,
     WorldEnvEntity{
       name = "The Player",
@@ -68,11 +70,15 @@ main :: proc() {
   // } else {
   //   fmt.eprintfln("Unable to marshal JSON: %v", err)
   // }
+  _world := make_world_env_soa()
+  defer delete_world(_world^)
   save_data, err := world_to_data(ctx.world)
   if err == nil {
     print(save_data)
   }
-  loaded_data := data_to_world(save_data)
+  // data_to_world(_world, save_data)
+  // println("ctx.world", ctx.world^)
+  // println("_world", _world^)
   
   player := &ctx.world[0]
   player_speed : f32 = 10.0
