@@ -266,3 +266,58 @@ cat_to_cstr :: proc(s: []string) -> cstring {
   return unsafe_string_to_cstring(concatenate(s))
 }
 
+take_while :: proc(s: string, f: proc(rune: rune) -> bool) -> [2]string {
+  idx := 0
+  for r in s {
+    if !f(r) {
+      break
+    }
+    idx += 1
+  }
+  return {s[:idx], s[idx:]}
+}
+
+take_thru :: proc(s: string, f: proc(rune: rune) -> bool) -> [2]string {
+  idx := 0
+  for r in s {
+    if f(r) {
+      idx += 1
+      break
+    }
+    idx += 1
+  }
+  return {s[:idx], s[idx:]}
+}
+
+take_until :: proc(s: string, f: proc(rune: rune) -> bool) -> [2]string {
+  idx := 0
+  for r in s {
+    if f(r) {
+      break
+    }
+    idx += 1
+  }
+  return {s[:idx], s[idx:]}
+}
+
+// Example predicates
+is_digit :: proc(r: rune) -> bool {
+  return '0' <= r && r <= '9'
+}
+
+is_alpha :: proc(r: rune) -> bool {
+  return ('a' <= r && r <= 'z') || ('A' <= r && r <= 'Z')
+}
+
+is_space :: proc(r: rune) -> bool {
+  return r == ' ' || r == '\t' || r == '\n' || r == '\r'
+}
+
+is_open_brace :: proc(r: rune) -> bool {
+  return r == '{'
+}
+
+is_close_brace :: proc(r: rune) -> bool {
+  return r == '}'
+}
+
