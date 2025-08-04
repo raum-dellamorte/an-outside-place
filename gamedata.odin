@@ -223,7 +223,7 @@ data_to_world :: proc(data: string) -> (world: ^WorldEnvSOA) {
 IndentStr :: "  "
 
 IndentCtl :: enum{
-  GetIndent, IncIndent, DecIndent,
+  GetIndent, IncIndent, DecIndent, ResetIndent,
 }
 
 indent_ctl :: proc(ictl:= IndentCtl.GetIndent) -> int {
@@ -232,6 +232,7 @@ indent_ctl :: proc(ictl:= IndentCtl.GetIndent) -> int {
   case .GetIndent: return i
   case .IncIndent: i += 1
   case .DecIndent: i -= 1
+  case .ResetIndent: i = 0
   }
   return i
 }
