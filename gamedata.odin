@@ -15,10 +15,18 @@ wprintln                   :: fmt.wprintln
 wprintfln                  :: fmt.wprintfln
 sbprint                    :: fmt.sbprint
 
+type_info_base             :: runtime.type_info_base
 Type_Info                  :: runtime.Type_Info
+Type_Info_Array            :: runtime.Type_Info_Array
 Type_Info_Boolean          :: runtime.Type_Info_Boolean
+Type_Info_Enum             :: runtime.Type_Info_Enum
+Type_Info_Enum_Value       :: runtime.Type_Info_Enum_Value
+Type_Info_Float            :: runtime.Type_Info_Float
+Type_Info_Integer          :: runtime.Type_Info_Integer
+Type_Info_Named            :: runtime.Type_Info_Named
+Type_Info_Pointer          :: runtime.Type_Info_Pointer
+Type_Info_Rune             :: runtime.Type_Info_Rune
 Type_Info_String           :: runtime.Type_Info_String
-Type_Info_Struct           :: runtime.Type_Info_Struct
 
 struct_field_names         :: reflect.struct_field_names
 struct_field_count         :: reflect.struct_field_count
@@ -26,6 +34,8 @@ struct_field_at            :: reflect.struct_field_at
 struct_field_by_name       :: reflect.struct_field_by_name
 struct_field_value         :: reflect.struct_field_value
 struct_field_value_by_name :: reflect.struct_field_value_by_name
+is_array                   :: reflect.is_array
+is_enum                    :: reflect.is_enum
 is_boolean                 :: reflect.is_boolean
 is_string                  :: reflect.is_string
 
@@ -180,8 +190,8 @@ data_to_world :: proc(data: string) -> (world: ^WorldEnvSOA) {
             // we have parse_uint, we CAN do this.
           case type_info_of(rl.Vector3):
             println("Struct field rl.Vector3 name is", name)
-          }
         }
+      }
       }
     case .Props: 
       if line == "}" {
