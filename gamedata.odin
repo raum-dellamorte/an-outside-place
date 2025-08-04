@@ -256,6 +256,112 @@ iostr_close :: proc(w: io.Stream, newline := true) {
   if newline { wprintln(w) }
 }
 
+iostr_struct :: proc(w: io.Stream, thing: any, info: ^Type_Info_Named, not_elem := true) {
+  iostr_open(w, info.name, not_elem)
+  field_count := struct_field_count(info.base.id)
+  for fn in 0..<field_count {
+    fld := struct_field_at(info.base.id, fn)
+    iostr_field(w, fld.name, struct_field_value(thing, fld), fld.type)
+  }
+  iostr_close(w, not_elem)
+}
+
+iostr_field :: proc(w: io.Stream, name: string, data: any, info: ^Type_Info) {
+  iostr_indent(w)
+  wprintf(w, "%v: ", name)
+  base := type_info_base(info)
+  #partial switch &v in info.variant {
+  case Type_Info_Array:
+    
+  case Type_Info_Named:
+    if is_enum(base) {
+      wprint(w, data)
+    } else if is_array(base) {
+      iostr_array(w, data, &base.variant.(Type_Info_Array))
+    } else {
+      iostr_struct(w, data, &v, false)
+    }
+  case Type_Info_Integer: iostr_int(w, data, info.size, v.signed)
+  case Type_Info_Float: iostr_float(w, data, info.size)
+  // case runtime.Type_Info_Rune:
+  case Type_Info_String:
+    a := data.(string)
+    wprint(w, a)
+  case Type_Info_Boolean:
+  }
+  wprintln(w)
+}
+
+iostr_array :: proc(w: io.Stream, thing: any, info: ^Type_Info_Array, not_elem := false) {
+  a_ptr := rawptr(uintptr(any(thing).data))
+  if not_elem { iostr_indent(w) }
+  wprintfln(w, "[")
+  indent_ctl(.IncIndent)
+  iostr_indent(w)
+  iostr_for_each_raw(w, a_ptr, info.elem, proc(w: io.Stream, v: any) {
+    wprintf(w, "%v,", v)
+  })
+  wprintln(w)
+  indent_ctl(.DecIndent)
+  iostr_indent(w)
+  wprint(w, "]")
+  if not_elem { wprintln(w) }
+}
+
+iostr_int :: proc(w: io.Stream, data: any, size: int, signed: bool) {
+  if signed {
+    switch size {
+    case size_of(i8):
+      a := cast(^i8)rawptr(uintptr(data.data))
+      wprint(w, a^)
+    case size_of(i16):
+      a := cast(^i16)rawptr(uintptr(data.data))
+      wprint(w, a^)
+    case size_of(i32):
+      a := cast(^i32)rawptr(uintptr(data.data))
+      wprint(w, a^)
+    case size_of(i64):
+      a := cast(^i64)rawptr(uintptr(data.data))
+      wprint(w, a^)
+    case size_of(i128):
+      a := cast(^i128)rawptr(uintptr(data.data))
+      wprint(w, a^)
+    }
+  } else {
+    switch size {
+    case size_of(u8):
+      a := cast(^u8)rawptr(uintptr(data.data))
+      wprint(w, a^)
+    case size_of(u16):
+      a := cast(^u16)rawptr(uintptr(data.data))
+      wprint(w, a^)
+    case size_of(u32):
+      a := cast(^u32)rawptr(uintptr(data.data))
+      wprint(w, a^)
+    case size_of(u64):
+      a := cast(^u64)rawptr(uintptr(data.data))
+      wprint(w, a^)
+    case size_of(u128):
+      a := cast(^u128)rawptr(uintptr(data.data))
+      wprint(w, a^)
+    }
+  }
+}
+
+iostr_float :: proc(w: io.Stream, data: any, size: int) {
+  switch size {
+  case size_of(f16):
+    a := cast(^f16)rawptr(uintptr(data.data))
+    wprint(w, a^)
+  case size_of(f32):
+    a := cast(^f32)rawptr(uintptr(data.data))
+    wprint(w, a^)
+  case size_of(f64):
+    a := cast(^f64)rawptr(uintptr(data.data))
+    wprint(w, a^)
+  }
+}
+
 strip_left :: proc(s: string) -> string {
   i := 0
   for ; i < len(s) && s[i] == ' '; i += 1 {}
