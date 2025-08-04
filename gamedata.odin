@@ -227,13 +227,6 @@ data_to_world :: proc(world: ^WorldEnvSOA, data: string) {
             }
             printfln("Did we write? entity.%v = %v", name, struct_field_value_by_name(entity, name).(Maybe(u32)))
             continue fields
-          // case type_info_of(rl.Color):
-          //   println("Struct field rl.Color name is", name)
-          //   // we have parse_uint, we CAN do this.
-          // case type_info_of(rl.Vector3):
-          //   println("Struct field rl.Vector3 name is", name)
-          // case type_info_of(^ActionTrackers):
-          //   
           case: check_and_write_entity_struct_field(&entity, name, fld_data)
           }
         }
