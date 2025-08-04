@@ -427,3 +427,62 @@ is_close_brace :: proc(r: rune) -> bool {
   return r == '}'
 }
 
+iostr_for_each_raw :: proc(w: io.Stream,a_ptr: rawptr, ti: ^Type_Info, f: proc(io.Stream, any)) {
+  v := type_info_base(ti).variant.(Type_Info_Array)
+  s := v.elem_size
+  c := v.count
+  #partial switch info in v.elem.variant {
+  case Type_Info_Integer:
+    for i in 0..<c {
+      if info.signed {
+        switch s {
+        case size_of(i8):
+          a := cast([^]i8)a_ptr
+          f(w, a[i])
+        case size_of(i16):
+          a := cast([^]i16)a_ptr
+          f(w, a[i])
+        case size_of(i32):
+          a := cast([^]i32)a_ptr
+          f(w, a[i])
+        case size_of(i64):
+          a := cast([^]i64)a_ptr
+          f(w, a[i])
+        case size_of(i128):
+          a := cast([^]i128)a_ptr
+          f(w, a[i])
+        }
+      } else {
+        switch s {
+        case size_of(u8):
+          a := cast([^]u8)a_ptr
+          f(w, a[i])
+        case size_of(u16):
+          a := cast([^]u16)a_ptr
+          f(w, a[i])
+        case size_of(u32):
+          a := cast([^]u32)a_ptr
+          f(w, a[i])
+        case size_of(u64):
+          a := cast([^]u64)a_ptr
+          f(w, a[i])
+        case size_of(u128):
+          a := cast([^]u128)a_ptr
+          f(w, a[i])
+        }
+      }
+    }
+  case Type_Info_Float:
+    a := cast([^]f32)a_ptr
+    for i in 0..<c {
+      f(w, a[i])
+    }
+  case Type_Info_Named:
+    a := cast([^]type_of(v.elem.id))a_ptr
+    for i in 0..<c {
+      f(w, a[i])
+    }
+  }
+}
+
+
