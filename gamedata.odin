@@ -58,23 +58,23 @@ world_to_data :: proc(
   fn := struct_field_count(WorldEnvEntity)
   for &thing in world {
     // Non boolean named fields
-    write_open(w, "Entity")
+    iostr_open(w, "Entity")
     for f in 0..<fn {
       fld := struct_field_at(WorldEnvEntity, f)
       switch {
       case is_string(fld.type):
         val := struct_field_value(thing, fld).(string)
         if val == "" { continue }
-        write_indent(w)
+        iostr_indent(w)
         wprintfln(w, "%v: %v", fld.name, val)
       case fld.type == type_info_of(u32):
         val := struct_field_value(thing, fld).(u32)
         if val == 0 { continue }
-        write_indent(w)
+        iostr_indent(w)
         wprintfln(w, "%v: %v", fld.name, val)
       case fld.type == type_info_of(Maybe(u32)):
         val := struct_field_value(thing, fld).(Maybe(u32)).? or_continue
-        write_indent(w)
+        iostr_indent(w)
         wprintfln(w, "%v: %v", fld.name, val)
       case fld.type == type_info_of(rl.Color):
         val := struct_field_value(thing, fld).(rl.Color)
@@ -99,8 +99,8 @@ world_to_data :: proc(
       }
     }
     if bool_count > 0 {
-      write_open(w, "Props")
-      write_indent(w)
+      iostr_open(w, "Props")
+      iostr_indent(w)
       for f in 0..<fn {
         fld := struct_field_at(WorldEnvEntity, f)
         if is_boolean(fld.type) {
@@ -110,9 +110,9 @@ world_to_data :: proc(
         }
       }
       wprintln(w)
-      write_close(w)
+      iostr_close(w)
     }
-    write_close(w)
+    iostr_close(w)
   }
   return sbprint(&b), nil
 }
@@ -237,22 +237,23 @@ indent_ctl :: proc(ictl:= IndentCtl.GetIndent) -> int {
   return i
 }
 
-write_indent :: proc(w: io.Stream) {
+iostr_indent :: proc(w: io.Stream) {
   for _ in 0..<indent_ctl() {
     wprint(w, IndentStr)
   }
 }
 
-write_open :: proc(w: io.Stream, title: string) {
-  write_indent(w)
+iostr_open :: proc(w: io.Stream, title: string, indent := true) {
+  if indent { iostr_indent(w) }
   wprintln(w, title, "{", sep = "")
   indent_ctl(.IncIndent)
 }
 
-write_close :: proc(w: io.Stream) {
+iostr_close :: proc(w: io.Stream, newline := true) {
   indent_ctl(.DecIndent)
-  write_indent(w)
-  wprintln(w, "}")
+  iostr_indent(w)
+  wprint(w, "}")
+  if newline { wprintln(w) }
 }
 
 strip_left :: proc(s: string) -> string {
