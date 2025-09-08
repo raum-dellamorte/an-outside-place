@@ -216,11 +216,11 @@ read_data_into_struct :: proc(strct: any, data: string) {
     case Type_Info_Array:
       write_struct_array_data(strct, fld, info, &fld_parse)
     case Type_Info_Named:
+      // fixme: so far nothing has triggered this so I'm not entirely sure what to do here.
       process_parse_res(&fld_parse, .ToMatching)
       println("named:", strip_string(fld_parse.data))
     case Type_Info_Struct:
       process_parse_res(&fld_parse, .ToMatching)
-      // println("struct:", strip_string(fld_parse.data))
       fld_data := struct_field_value(strct, fld)
       read_data_into_struct(fld_data, fld_parse.data)
     case Type_Info_Enum:
@@ -235,8 +235,8 @@ read_data_into_struct :: proc(strct: any, data: string) {
     case Type_Info_Dynamic_Array:
       write_struct_dyn_array_data(strct, fld, &fld_parse)
     case:
-      println("info:", info)
-    }// check_and_write_entity_struct_field(&entity, name, fld_data)
+      println("unhandled info:", info)
+    }
   }
   if len(fld_parse.rem) > 0 {
     read_data_into_struct(strct, fld_parse.rem)
