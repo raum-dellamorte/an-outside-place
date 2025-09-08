@@ -263,13 +263,20 @@ read_data_into_struct :: proc(strct: any, data: string) {
           anyray := struct_field_value(strct, fld)
           if _data_alloc, err := mem.alloc_bytes(elem_size); err == .None {
             for datum in data {
-              v := any{rawptr(raw_data(_data_alloc)), t}
+              elem := any{rawptr(raw_data(_data_alloc)), t}
               if d := take_thru_matching(datum); d.err == .Ok {
                 // println("v1:", v)
-                read_data_into_struct(v, d.res)
+                read_data_into_struct(elem, d.res)
                 // println("v2:", v)
-                if ok := dyn_array_append(anyray, v); !ok {
-                  println("read_data_into_struct: Failed to append to dynamic array.")
+                switch dyn_array_append(anyray, elem) {
+                case .NotDynArray:
+                  println("read_data_into_struct>dyn_array_append: 'anyray' not a dynamic array:", anyray, elem)
+                case .ElemWrongType:
+                  println("read_data_into_struct>dyn_array_append: typeid of 'elem' does not match 'anyray' element typeid:", anyray, elem)
+                case .NewLengthNotAsExpected:
+                  println("read_data_into_struct>dyn_array_append: wrong length reported after append:", anyray, elem)
+                case .Ok:
+                  // Success!
                 }
               } else { println("read_data_into_struct: dyn array of named: datum not as expected:", d, datum) }
               mem.zero_explicit(raw_data(_data_alloc), elem_size)
@@ -309,20 +316,24 @@ toggle_boolean_fields :: proc(strct: any, field_names: []string) {
   }
 }
 
+Dyn_Array_Append_Err :: enum {
+  Ok,
+  NotDynArray,
+  ElemWrongType,
+  NewLengthNotAsExpected,
+}
 // Appends an element into a dynamic array for which we have no
 // runtime `Type`, only `typeid`s to work with.
 // Intended for unmarshalling.
 // Fails if `anyray` is not a dynamic array or if the `typeid` of
 // the the dynamic array's element and the `elem` pass aren't equal. 
-dyn_array_append :: proc(anyray: any, elem: any) -> bool {
+dyn_array_append :: proc(anyray: any, elem: any) -> Dyn_Array_Append_Err {
   ray_info := type_info_base(type_info_of(anyray.id))
   dyn_info, ok := ray_info.variant.(Type_Info_Dynamic_Array)
   if !ok {
-    println("dyn_array_append: 'anyray' not a dynamic array:", anyray, elem)
-    return false // not a dynamic array
+    return .NotDynArray
   } else if elem.id != dyn_info.elem.id {
-    println("dyn_array_append: typeid of 'elem' does not match 'anyray' element typeid:", anyray, elem)
-    return false // wrong element type
+    return .ElemWrongType
   }
   // Cast any.data, a rawptr now known to point to a Dynamic Array,
   // to a pointer to a Raw_Dynamic_array, granting us access to its
@@ -331,33 +342,28 @@ dyn_array_append :: proc(anyray: any, elem: any) -> bool {
   old_len := rda.len
   elem_align := type_info_of(elem.id).align
   new_len := runtime.__dynamic_array_append(rda, dyn_info.elem_size, elem_align, elem.data, 1)
-  return new_len == old_len + 1
+  if new_len == old_len + 1 { return .Ok } else { return .NewLengthNotAsExpected }
 }
 
 // _resize_dynamic_array :: #force_inline proc(a: ^Raw_Dynamic_Array, size_of_elem, align_of_elem: int, length: int, should_zero: bool, loc := #caller_location) -> runtime.Allocator_Error {
 //   if a == nil {
 //     return nil
 //   }
-  
 //   if should_zero && a.len < length {
 //     num_reused := min(a.cap, length) - a.len
 //     intrinsics.mem_zero(([^]byte)(a.data)[a.len*size_of_elem:], num_reused*size_of_elem)
 //   }
-  
 //   if length <= a.cap {
 //     a.len = max(length, 0)
 //     return nil
 //   }
-  
 //   if a.allocator.procedure == nil {
 //     a.allocator = context.allocator
 //   }
 //   assert(a.allocator.procedure != nil)
-  
 //   old_size  := a.cap  * size_of_elem
 //   new_size  := length * size_of_elem
 //   allocator := a.allocator
-  
 //   new_data : []byte
 //   if should_zero {
 //     new_data = runtime.mem_resize(a.data, old_size, new_size, align_of_elem, allocator, loc) or_return
@@ -367,7 +373,6 @@ dyn_array_append :: proc(anyray: any, elem: any) -> bool {
 //   if new_data == nil && new_size > 0 {
 //     return .Out_Of_Memory
 //   }
-  
 //   a.data = raw_data(new_data)
 //   a.len = length
 //   a.cap = length
