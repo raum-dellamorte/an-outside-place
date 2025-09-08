@@ -31,7 +31,7 @@ main :: proc() {
   defer delete_game_context(ctx)
   world_file := #load("res/data/world", string)
   // data_to_world(ctx.world, world_file)
-  append_soa(ctx.world,
+  append_soa(&ctx.world,
     WorldEnvEntity{
       name = "The Player",
       is_player = true, is_cam_target = true, color = rl.Color {200,100,120,255},
@@ -71,7 +71,7 @@ main :: proc() {
   //   fmt.eprintfln("Unable to marshal JSON: %v", err)
   // }
   _world := make_world_env_soa()
-  defer delete_world(_world^)
+  defer delete_world(_world)
   save_data, err := world_to_data(ctx.world)
   if err == nil {
     print(save_data)
@@ -206,7 +206,7 @@ check_for_collisions :: proc(ctx: ^GameContext) {
         if player.is_alive {
           mob.actions[0].focus = 0 // 0 is the player atm
           player.actions[0].focus = u32(i)
-          append(ctx.combatants, u32(0), u32(i)) // fixme: need to potentially add multiple combatants
+          append(&ctx.combatants, u32(0), u32(i)) // fixme: need to potentially add multiple combatants
         }
         break
       }
@@ -378,15 +378,15 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
     entity := &ctx.world[ctx.combatants[i]]
     if !entity.is_alive {
       if entity.is_player {
-        clear(ctx.combatants)
+        clear(&ctx.combatants)
         break
       } else {
-        ordered_remove(ctx.combatants, i)
+        ordered_remove(&ctx.combatants, i)
         i -= 1
       }
     }
     if len(ctx.combatants) < 2 {
-      clear(ctx.combatants)
+      clear(&ctx.combatants)
       break
     }
   }

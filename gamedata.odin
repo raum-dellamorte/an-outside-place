@@ -10,10 +10,6 @@ import "core:strings"
 import rl "vendor:raylib"
 
 wprint                     :: fmt.wprint
-wprintf                    :: fmt.wprintf
-wprintln                   :: fmt.wprintln
-wprintfln                  :: fmt.wprintfln
-sbprint                    :: fmt.sbprint
 
 type_info_base             :: runtime.type_info_base
 Type_Info                  :: runtime.Type_Info
@@ -39,16 +35,8 @@ is_enum                    :: reflect.is_enum
 is_boolean                 :: reflect.is_boolean
 is_string                  :: reflect.is_string
 
-parse_f32                  :: strconv.parse_f32
-parse_f64                  :: strconv.parse_f64
-parse_uint                 :: strconv.parse_uint
-parse_int                  :: strconv.parse_int
-
-unsafe_string_to_cstring   :: strings.unsafe_string_to_cstring
-concatenate                :: strings.concatenate
-
 world_to_data :: proc(
-  world: ^WorldEnvSOA, allocator := context.allocator, loc := #caller_location
+  world: WorldEnvSOA, allocator := context.allocator, loc := #caller_location
 ) -> (data: string, err: Maybe(u32)) {
   b := strings.builder_make(allocator, loc)
   defer if err != nil {
@@ -271,9 +259,9 @@ data_to_world :: proc(world: ^WorldEnvSOA, data: string) {
 
 check_and_write_entity_struct_field :: proc(entity: ^WorldEnvEntity, field_name: string, line: string,) {
   fld := struct_field_by_name(type_of(entity^), field_name)
-  _s := take_thru(line, is_open_brace)[1]
+  _s := take_thru(line, is_open_brace).rem
   if len(_s) == 0 { println("take_thru failed", line, _s, sep = ";"); return }
-  _s = take_until(_s, is_close_brace)[0]
+  _s = take_until(_s, is_close_brace).rem
   if len(_s) == 0 { println("take_until failed", line, _s, sep = ";"); return }
   s_flds, _ := strings.split(_s,",")
   for s_fld, idx in s_flds {
@@ -464,74 +452,9 @@ iostr_float :: proc(w: io.Stream, data: any, size: int) {
   }
 }
 
-strip_left :: proc(s: string) -> string {
-  i := 0
-  for ; i < len(s) && s[i] == ' '; i += 1 {}
-  return s[i:]
-}
-
-cat_to_cstr :: proc(s: []string) -> cstring {
-  return unsafe_string_to_cstring(concatenate(s))
-}
-
 write_struct_data :: proc(thing: any, offset: uintptr, data: $T, maybe := false) {
   ptr := cast(^T)rawptr(uintptr(thing.data) + offset)
   ptr^ = data
-}
-
-take_while :: proc(s: string, f: proc(rune: rune) -> bool) -> [2]string {
-  idx := 0
-  for r in s {
-    if !f(r) {
-      break
-    }
-    idx += 1
-  }
-  return {s[:idx], s[idx:]}
-}
-
-take_thru :: proc(s: string, f: proc(rune: rune) -> bool) -> [2]string {
-  idx := 0
-  for r in s {
-    if f(r) {
-      idx += 1
-      break
-    }
-    idx += 1
-  }
-  return {s[:idx], s[idx:]}
-}
-
-take_until :: proc(s: string, f: proc(rune: rune) -> bool) -> [2]string {
-  idx := 0
-  for r in s {
-    if f(r) {
-      break
-    }
-    idx += 1
-  }
-  return {s[:idx], s[idx:]}
-}
-
-// Example predicates
-is_digit :: proc(r: rune) -> bool {
-  return '0' <= r && r <= '9'
-}
-
-is_alpha :: proc(r: rune) -> bool {
-  return ('a' <= r && r <= 'z') || ('A' <= r && r <= 'Z')
-}
-
-is_space :: proc(r: rune) -> bool {
-  return r == ' ' || r == '\t' || r == '\n' || r == '\r'
-}
-
-is_open_brace :: proc(r: rune) -> bool {
-  return r == '{'
-}
-
-is_close_brace :: proc(r: rune) -> bool {
-  return r == '}'
 }
 
 iostr_for_each_raw :: proc(w: io.Stream,a_ptr: rawptr, ti: ^Type_Info, f: proc(io.Stream, any)) {

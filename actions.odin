@@ -2,16 +2,15 @@ package raumortis
 
 ActionTrackers :: [dynamic]ActionTracker
 
-make_action_tracker_list :: proc(len := 0, cap := 6) -> ^[dynamic]ActionTracker {
-  out := new([dynamic]ActionTracker)
-  out^ = make([dynamic]ActionTracker,len,cap)
+make_action_tracker_list :: proc(len := 0, cap := 6) -> [dynamic]ActionTracker {
+  out := make([dynamic]ActionTracker,len,cap)
   return out
 }
 
-make_action_tracker_list_from_slice :: proc(action_trackers: []ActionTracker) -> ^[dynamic]ActionTracker {
+make_action_tracker_list_from_slice :: proc(action_trackers: []ActionTracker) -> [dynamic]ActionTracker {
   out := make_action_tracker_list()
   for at in action_trackers {
-    append(out, at)
+    append(&out, at)
   }
   return out
 }

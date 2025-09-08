@@ -7,8 +7,7 @@ ShaderDir :: "res/shaders/"
 make_game_context :: proc() -> GameContext {
   world := make_world_env_soa()
   studio := gen_studio()
-  combatants := new([dynamic]u32)
-  combatants^ = make([dynamic]u32, 0, 50)
+  combatants := make([dynamic]u32, 0, 50)
   prev_calc_times := [120]f64{0..<120 = 60.0}
   prev_draw_times := [120]f64{0..<120 = 60.0}
   return GameContext{
@@ -22,9 +21,8 @@ make_game_context :: proc() -> GameContext {
   }
 }
 
-make_world_env_soa :: proc() -> (world: ^WorldEnvSOA) {
-  world  = new(WorldEnvSOA)
-  world^ = make_soa(WorldEnvSOA, 0, 100)
+make_world_env_soa :: proc() -> (world: WorldEnvSOA) {
+  world  = make_soa(WorldEnvSOA, 0, 100)
   return
 }
 
@@ -54,7 +52,7 @@ gen_studio :: proc() -> Studio { // maybe take a Config struct?
   instanced.shader.locs[SLI.MATRIX_PROJECTION] = i32(
     rl.GetShaderLocation(instanced.shader, "projection"),
   )
-  append(shaders, instanced)
+  append(&shaders, instanced)
     
   // //Textures
   // textures := gen_texture_list()
@@ -82,9 +80,9 @@ gen_studio :: proc() -> Studio { // maybe take a Config struct?
 }
 
 GameContext :: struct {
-  world: ^WorldEnvSOA,
+  world: WorldEnvSOA,
   studio: Studio,
-  combatants: ^[dynamic]u32,
+  combatants: [dynamic]u32,
   prev_calc_times: [120]f64,
   calc_time_ptr: int,
   avg_calc_time: f64,
@@ -97,8 +95,8 @@ GameContext :: struct {
 }
 delete_game_context :: proc(game_context: GameContext) {
   ctx := game_context
-  world := ctx.world^
-  combatants := ctx.combatants^
+  world := ctx.world
+  combatants := ctx.combatants
   delete_studio(ctx.studio)
   delete(combatants)
   delete_world(world)
@@ -106,11 +104,11 @@ delete_game_context :: proc(game_context: GameContext) {
 
 Studio :: struct {
   camera: rl.Camera3D,
-  shaders: ^[dynamic]ShaderSet,
+  shaders: [dynamic]ShaderSet,
 }
 delete_studio :: proc(studio: Studio) {
   _studio := studio
-  shaders := _studio.shaders^
+  shaders := _studio.shaders
   delete(shaders)
 }
 
@@ -130,13 +128,13 @@ WorldEnvEntity :: struct {
   rot: rl.Vector3 `json:"rot"`,
   prev_pos: rl.Vector3 `json:"prev_pos"`,
   health: u32 `json:"health"`,
-  actions: ^ActionTrackers `json:"actions"`,
+  actions: ActionTrackers `json:"actions"`,
 }
 delete_world :: proc(world: WorldEnvSOA) {
   for &thing in world {
     if thing.actions != nil {
-      actions := thing.actions^
-      thing.actions = nil
+      actions := thing.actions
+      // thing.actions = nil
       delete(actions)
     }
   }
@@ -148,9 +146,8 @@ ShaderSet :: struct {
   shader: rl.Shader,
 }
 
-make_shaders_list :: proc() -> ^[dynamic]ShaderSet {
-  out := new([dynamic]ShaderSet)
-  out^ = make([dynamic]ShaderSet,0,10)
+make_shaders_list :: proc() -> [dynamic]ShaderSet {
+  out := make([dynamic]ShaderSet,0,10)
   return out
 }
 
