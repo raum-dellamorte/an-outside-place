@@ -253,75 +253,6 @@ toggle_boolean_fields :: proc(strct: any, field_names: []string) {
   }
 }
 
-write_struct_array_data :: proc(strct: any, fld: Struct_Field, info: Type_Info_Array, fld_parse: ^ParseRes) {
-  process_parse_res(fld_parse, .ToMatching)
-  // println("array:", fld_parse)
-  data_list := split(strip_string(fld_parse.data), ",")
-  if len(data_list) > info.count {
-    data_list = data_list[:info.count]
-  }
-  for n, idx in data_list {
-    #partial switch _info in info.elem.variant {
-    case Type_Info_Float:
-      data, ok := parse_f64(n)
-      if ok {
-        // println("write float array", idx, data)
-        write_struct_float(strct, fld.offset + uintptr(info.elem_size * idx), data, info.elem_size)
-      } else {
-        println("parse_f64 failed:", n)
-      }
-    case Type_Info_Integer:
-      data, ok := parse_int(n)
-      if ok {
-        // println("write int array", idx, data)
-        write_struct_int(strct, fld.offset + uintptr(info.elem_size * idx), data, info.elem_size, _info.signed)
-      } else {
-        println("parse_int failed:", n)
-      }
-    case:
-      println("unhandled array item info", info.elem)
-    }
-  }
-}
-
-write_struct_dyn_array_data :: proc(strct: any, fld: Struct_Field, fld_parse: ^ParseRes) {
-  process_parse_res(fld_parse, .ToMatching)
-  t := typeid_elem(fld.type.id)
-  ti := type_info_of(t)
-  #partial switch _info in ti.variant {
-  case Type_Info_Named:
-    name := _info.name
-    data := split(fld_parse.data, name)
-    if len(data) > 1 {
-      elem_size := type_info_of(fld.type.id).variant.(Type_Info_Dynamic_Array).elem_size
-      data = data[1:]
-      anyray := struct_field_value(strct, fld)
-      if _data_alloc, err := mem.alloc_bytes(elem_size); err == .None {
-        for datum in data {
-          elem := any{rawptr(raw_data(_data_alloc)), t}
-          if d := take_thru_matching(datum); d.err == .Ok {
-            read_data_into_struct(elem, d.res)
-            switch dyn_array_append(anyray, elem) {
-            case .NotDynArray:
-              println("read_data_into_struct>dyn_array_append: 'anyray' not a dynamic array:", anyray, elem)
-            case .ElemWrongType:
-              println("read_data_into_struct>dyn_array_append: typeid of 'elem' does not match 'anyray' element typeid:", anyray, elem)
-            case .NewLengthNotAsExpected:
-              println("read_data_into_struct>dyn_array_append: wrong length reported after append:", anyray, elem)
-            case .Ok:
-              // Success!
-            }
-          } else { println("read_data_into_struct: dyn array of named: datum not as expected:", d, datum) }
-          mem.zero_explicit(raw_data(_data_alloc), elem_size)
-        } // todo: else it didn't work
-        mem.free_with_size(raw_data(_data_alloc), elem_size)
-      }
-    }
-  case:
-    println("Dynamic Array of something:", t)
-  }
-}
-
 Dyn_Array_Append_Err :: enum {
   Ok,
   NotDynArray,
@@ -460,6 +391,75 @@ write_struct_float :: proc(strct: any, offset: uintptr, data: f64, size: int) {
   case size_of(f64):
     a := cast(^f64)ptr
     a^ = cast(f64)data
+  }
+}
+
+write_struct_array_data :: proc(strct: any, fld: Struct_Field, info: Type_Info_Array, fld_parse: ^ParseRes) {
+  process_parse_res(fld_parse, .ToMatching)
+  // println("array:", fld_parse)
+  data_list := split(strip_string(fld_parse.data), ",")
+  if len(data_list) > info.count {
+    data_list = data_list[:info.count]
+  }
+  for n, idx in data_list {
+    #partial switch _info in info.elem.variant {
+    case Type_Info_Float:
+      data, ok := parse_f64(n)
+      if ok {
+        // println("write float array", idx, data)
+        write_struct_float(strct, fld.offset + uintptr(info.elem_size * idx), data, info.elem_size)
+      } else {
+        println("parse_f64 failed:", n)
+      }
+    case Type_Info_Integer:
+      data, ok := parse_int(n)
+      if ok {
+        // println("write int array", idx, data)
+        write_struct_int(strct, fld.offset + uintptr(info.elem_size * idx), data, info.elem_size, _info.signed)
+      } else {
+        println("parse_int failed:", n)
+      }
+    case:
+      println("unhandled array item info", info.elem)
+    }
+  }
+}
+
+write_struct_dyn_array_data :: proc(strct: any, fld: Struct_Field, fld_parse: ^ParseRes) {
+  process_parse_res(fld_parse, .ToMatching)
+  t := typeid_elem(fld.type.id)
+  ti := type_info_of(t)
+  #partial switch _info in ti.variant {
+  case Type_Info_Named:
+    name := _info.name
+    data := split(fld_parse.data, name)
+    if len(data) > 1 {
+      elem_size := type_info_of(fld.type.id).variant.(Type_Info_Dynamic_Array).elem_size
+      data = data[1:]
+      anyray := struct_field_value(strct, fld)
+      if _data_alloc, err := mem.alloc_bytes(elem_size); err == .None {
+        for datum in data {
+          elem := any{rawptr(raw_data(_data_alloc)), t}
+          if d := take_thru_matching(datum); d.err == .Ok {
+            read_data_into_struct(elem, d.res)
+            switch dyn_array_append(anyray, elem) {
+            case .NotDynArray:
+              println("read_data_into_struct>dyn_array_append: 'anyray' not a dynamic array:", anyray, elem)
+            case .ElemWrongType:
+              println("read_data_into_struct>dyn_array_append: typeid of 'elem' does not match 'anyray' element typeid:", anyray, elem)
+            case .NewLengthNotAsExpected:
+              println("read_data_into_struct>dyn_array_append: wrong length reported after append:", anyray, elem)
+            case .Ok:
+              // Success!
+            }
+          } else { println("read_data_into_struct: dyn array of named: datum not as expected:", d, datum) }
+          mem.zero_explicit(raw_data(_data_alloc), elem_size)
+        } // todo: else it didn't work
+        mem.free_with_size(raw_data(_data_alloc), elem_size)
+      }
+    }
+  case:
+    println("Dynamic Array of something:", t)
   }
 }
 
