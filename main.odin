@@ -11,6 +11,8 @@ import "core:strconv"
 import rl "vendor:raylib"
 // import rlgl "vendor:raylib/rlgl"
 
+// rl :: raylib
+
 print :: fmt.print
 printf :: fmt.printf
 println :: fmt.println
@@ -30,55 +32,44 @@ main :: proc() {
   ctx := make_game_context()
   defer delete_game_context(ctx)
   world_file := #load("res/data/world", string)
-  // data_to_world(ctx.world, world_file)
-  append_soa(&ctx.world,
-    WorldEnvEntity{
-      name = "The Player",
-      is_player = true, is_cam_target = true, color = rl.Color {200,100,120,255},
-      is_alive = true, health = 100,
-      actions = make_action_tracker_list_from_slice({ { id = 1 } }),
-    },
-    WorldEnvEntity{
-      name = "Blue",
-      is_mob = true, pos = {10.0, 0.0, -5.0}, color = rl.BLUE,
-      is_alive = true, health = 30,
-      actions = make_action_tracker_list_from_slice({ { id = 2 } }),
-    },
-    WorldEnvEntity{
-      name = "Green",
-      is_mob = true, pos = {4.0, 0.0, -3.0}, color = rl.GREEN,
-      is_alive = true, health = 50,
-      actions = make_action_tracker_list_from_slice({ { id = 2 } }),
-    },
-    WorldEnvEntity{
-      name = "Purple",
-      is_mob = true, pos = {-8.0, 0.0, 2.0}, color = rl.DARKPURPLE,
-      is_alive = true, health = 70,
-      actions = make_action_tracker_list_from_slice({ { id = 2 } }),
-    },
-  )
-  
-  // wesoa, err := json.marshal(
+  data_to_world(&ctx.world, world_file)
+  // append_soa(&ctx.world,
+  //   WorldEnvEntity{
+  //     name = "The Player",
+  //     is_player = true, is_cam_target = true, color = rl.Color {200,100,120,255},
+  //     is_alive = true, health = 100,
+  //     actions = make_action_tracker_list_from_slice({ { id = 1 } }),
+  //   },
+  //   WorldEnvEntity{
+  //     name = "Blue",
+  //     is_mob = true, pos = {10.0, 0.0, -5.0}, color = rl.BLUE,
+  //     is_alive = true, health = 30,
+  //     actions = make_action_tracker_list_from_slice({ { id = 2 } }),
+  //   },
+  //   WorldEnvEntity{
+  //     name = "Green",
+  //     is_mob = true, pos = {4.0, 0.0, -3.0}, color = rl.GREEN,
+  //     is_alive = true, health = 50,
+  //     actions = make_action_tracker_list_from_slice({ { id = 2 } }),
+  //   },
   //   WorldEnvEntity{
   //     name = "Purple",
   //     is_mob = true, pos = {-8.0, 0.0, 2.0}, color = rl.DARKPURPLE,
   //     is_alive = true, health = 70,
-  //     actions = make_action_tracker_list({ { id = 2 } }),
-  //   }, {spec = .JSON5, pretty = true, use_enum_names = true})
-  // if err == nil {
-  //   printf("%s", wesoa)
-  // } else {
-  //   fmt.eprintfln("Unable to marshal JSON: %v", err)
-  // }
-  _world := make_world_env_soa()
-  defer delete_world(_world)
+  //     actions = make_action_tracker_list_from_slice({ { id = 2 } }),
+  //   },
+  // )
+  
+  // _world := make_world_env_soa()
+  // defer delete_world(_world)
   save_data, err := world_to_data(ctx.world)
   if err == nil {
     print(save_data)
   }
-  // data_to_world(_world, save_data)
-  // println("ctx.world", ctx.world^)
-  // println("_world", _world^)
+  // data_to_world(&_world, save_data)
+  // println("ctx.world", ctx.world)
+  // println("_world", _world)
+  // println("ctx.world == _world:", ctx.world == _world)
   
   player := &ctx.world[0]
   player_speed : f32 = 10.0

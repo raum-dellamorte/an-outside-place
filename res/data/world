@@ -1,35 +1,71 @@
 Entity{
   name: The Player
-  color: Color{r:200, g:100, b:120, a:255}
+  color: [
+    200,100,120,255,
+  ]
+  pos: [
+    0,0,0,
+  ]
+  rot: [
+    0,0,0,
+  ]
+  prev_pos: [
+    0,0,0,
+  ]
   health: 100
-  Props{
+  actions: [
+    ActionTracker{
+      id: 1
+      focus: 0
+      timer: ActionTimer{
+        seconds: 0
+        stage: Prep
+      }
+    }
+  ]
+  Props: {
     is_cam_target,is_player,is_alive,
   }
 }
 Entity{
   name: Blue
-  color: Color{r:0, g:121, b:241, a:255}
-  pos: Vector3{x:10, y:0, z:-5}
+  color: [ 0,121,241,255, ]
+  pos: [ 10,0,-5, ]
+  rot: [ 0,0,0, ]
   health: 30
-  Props{
-    is_mob,is_alive,
-  }
+  actions: [ ActionTracker{ id: 2 } ]
+  Props: { is_mob,is_alive, }
 }
 Entity{
   name: Green
-  color: Color{r:0, g:228, b:48, a:255}
-  pos: Vector3{x:4, y:0, z:-3}
+  color: [ 0,228,48,255, ]
+  pos: [ 4,0,-3, ]
   health: 50
-  Props{
-    is_mob,is_alive,
-  }
+  actions: [ ActionTracker{ id: 2 } ]
+  Props: { is_mob,is_alive, }
 }
 Entity{
   name: Purple
-  color: Color{r:112, g:31, b:126, a:255}
-  pos: Vector3{x:-8, y:0, z:2}
+  color: [ 112,31,126,255, ]
+  pos: [ -8,0,2, ]
   health: 70
-  Props{
-    is_mob,is_alive,
-  }
+  actions: [ ActionTracker{ id: 2 } ]
+  Props: { is_mob,is_alive, }
+}
+Entity{
+  name: Dave
+  color: [ 0,221,141,55, ]
+  pos: [ 20,0,-8, ]
+  health: 10
+  actions: [ ActionTracker{ id: 2 } ]
+  Props: { is_mob,is_alive, }
+}
+Entity{
+  name: Steve
+  color: [ 90,11,191,255, ]
+  pos: [ 4,0,-6, ]
+  rot: [ 0,0,0, ]
+  health: 30
+  actions: [ ActionTracker{ id: 2 } ]
+  Props: { is_mob,is_alive, }
 }

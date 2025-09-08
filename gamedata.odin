@@ -1,20 +1,16 @@
 package raumortis
 
-import "core:fmt"
-import "core:io"
+import "base:intrinsics"
+import "core:mem"
 import "core:reflect"
 import "base:runtime"
-import "core:text/regex"
-import "core:strconv"
-import "core:strings"
-import rl "vendor:raylib"
-
-wprint                     :: fmt.wprint
 
 type_info_base             :: runtime.type_info_base
+Raw_Dynamic_Array          :: runtime.Raw_Dynamic_Array
 Type_Info                  :: runtime.Type_Info
 Type_Info_Array            :: runtime.Type_Info_Array
 Type_Info_Boolean          :: runtime.Type_Info_Boolean
+Type_Info_Dynamic_Array    :: runtime.Type_Info_Dynamic_Array
 Type_Info_Enum             :: runtime.Type_Info_Enum
 Type_Info_Enum_Value       :: runtime.Type_Info_Enum_Value
 Type_Info_Float            :: runtime.Type_Info_Float
@@ -23,6 +19,8 @@ Type_Info_Named            :: runtime.Type_Info_Named
 Type_Info_Pointer          :: runtime.Type_Info_Pointer
 Type_Info_Rune             :: runtime.Type_Info_Rune
 Type_Info_String           :: runtime.Type_Info_String
+Type_Info_Struct           :: runtime.Type_Info_Struct
+Type_Info_Union            :: runtime.Type_Info_Union
 
 struct_field_names         :: reflect.struct_field_names
 struct_field_count         :: reflect.struct_field_count
@@ -30,19 +28,22 @@ struct_field_at            :: reflect.struct_field_at
 struct_field_by_name       :: reflect.struct_field_by_name
 struct_field_value         :: reflect.struct_field_value
 struct_field_value_by_name :: reflect.struct_field_value_by_name
+typeid_elem                :: reflect.typeid_elem
 is_array                   :: reflect.is_array
-is_enum                    :: reflect.is_enum
 is_boolean                 :: reflect.is_boolean
+is_dynamic_array           :: reflect.is_dynamic_array
+is_enum                    :: reflect.is_enum
+is_pointer                 :: reflect.is_pointer
 is_string                  :: reflect.is_string
 
 world_to_data :: proc(
   world: WorldEnvSOA, allocator := context.allocator, loc := #caller_location
 ) -> (data: string, err: Maybe(u32)) {
-  b := strings.builder_make(allocator, loc)
+  b := string_builder_make(allocator, loc)
   defer if err != nil {
-    strings.builder_destroy(&b)
+    string_builder_destroy(&b)
   }
-  w := strings.to_writer(&b) // I'll write my own format! With strippers! And blackjack!
+  w := string_to_writer(&b) // I'll write my own format! With strippers! And blackjack!
   fn := struct_field_count(WorldEnvEntity)
   for &thing in world {
     // Non boolean named fields
@@ -64,11 +65,6 @@ world_to_data :: proc(
         val := struct_field_value(thing, fld).(Maybe(u32)).? or_continue
         iostr_indent(w)
         wprintfln(w, "%v: %v", fld.name, val)
-      // case fld.type == type_info_of(rl.Color):
-      //   val := struct_field_value(thing, fld).(rl.Color)
-      //   if val == cast(rl.Color){} { continue }
-      //   write_indent(w)
-      //   wprintfln(w, "%v: Color{{r:%i, g:%i, b:%i, a:%i}}", fld.name, val.r, val.g, val.b, val.a)
       case is_array(fld.type): // fld.type == type_info_of(rl.Vector3):
         a_ptr := rawptr(uintptr(any(thing).data) + fld.offset)
         iostr_indent(w)
@@ -92,12 +88,14 @@ world_to_data :: proc(
         // if val == cast(rl.Vector3){} { continue }
         // write_indent(w)
         // wprintfln(w, "%v: Vector3{{x:%v, y:%v, z:%v}}", fld.name, val.x, val.y, val.z)
-      case reflect.is_pointer(fld.type) && reflect.is_dynamic_array(fld.type.variant.(Type_Info_Pointer).elem):
-        val := struct_field_value(thing, fld).(^ActionTrackers)
+      // case is_pointer(fld.type) && is_dynamic_array(fld.type.variant.(Type_Info_Pointer).elem):
+      case is_dynamic_array(fld.type):
+        // fixme: can't assume this is ActionTrackers
+        val := struct_field_value(thing, fld).(ActionTrackers)
         iostr_indent(w)
         wprintln(w, fld.name, ": [", sep = "")
         indent_ctl(.IncIndent)
-        for item in val^ {
+        for item in val {
           // write_indent(w)
           // wprintln(w, item, ",", sep = "")
           t := type_info_of(type_of(item)).variant
@@ -119,7 +117,7 @@ world_to_data :: proc(
       }
     }
     if bool_count > 0 {
-      iostr_open(w, "Props")
+      iostr_open(w, "Props: ")
       iostr_indent(w)
       for f in 0..<fn {
         fld := struct_field_at(WorldEnvEntity, f)
@@ -138,177 +136,243 @@ world_to_data :: proc(
 }
 
 data_to_world :: proc(world: ^WorldEnvSOA, data: string) {
-  // world = make_world_env_soa()
-  lines, _ := strings.split_lines(data)
-  Stage :: enum {
-    New,
-    Entity,
-    Struct,
-    Array,
-    Props,
-  }
-  stage := [10]Stage{}
   indent_ctl(.ResetIndent)
   entity:WorldEnvEntity = {}
   entity.actions = make_action_tracker_list()
-  for line in lines {
-    line := strip_left(line)
-    if line == "" { continue }
-    switch stage[indent_ctl()] {
-    case .New:
-      switch line {
-      case "Entity{":
-        println("Entity found!")
-        stage[indent_ctl(.IncIndent)] = .Entity
-      case: println("Oops, you broke it.")
+  before, ent, rem : = "", "", data
+  for ; len(rem) > 0 ; {
+    before, ent, rem = three_strings(take_thru_matching(rem))
+    read_data_into_struct(entity, ent)
+    append_soa(world, entity)
+    entity = WorldEnvEntity{}
+    entity.actions = make_action_tracker_list()
+  }
+}
+
+read_data_into_struct :: proc(strct: any, data: string) {
+  data := strip_left(data)
+  if len(data) < 1 { return }
+  {
+    _props := expect_label(data, "Props", ": ", false)
+    if _props.err == .Ok {
+      // println(_props)
+      props := take_thru_matching(_props.rem)
+      toggle_boolean_fields(strct, split(props.res, sep = ","))
+      read_data_into_struct(strct, props.rem)
+      return
+    }
+  }
+  strct_info := type_info_base(type_info_of(strct.id))
+  field_names := struct_field_names(strct.id)
+  fld_parse := expect_one_of(data, field_names, ": ")
+  #partial switch fld_parse.err {
+  case .NoMatch:
+    println("NoMatch: Current Type:", strct.id, "No Match:", fld_parse, "data:", data)
+    fld_parse.rem = take_thru(fld_parse.rem, is_newline).rem
+  case .Incomplete:
+    println("Incomplete:", fld_parse)
+    fld_parse.rem = take_thru(fld_parse.rem, is_newline).rem
+  case .EmptyInput:
+    return
+  case .Ok:
+    // fld_name = fld_match.res
+    fld := struct_field_by_name(strct.id, fld_parse.res)
+    #partial switch info in type_info_base(type_info_of(fld.type.id)).variant {
+    case Type_Info_String:
+      process_parse_res(&fld_parse, .ToNewline)
+      write_struct_data(strct, fld.offset, fld_parse.data)
+    case Type_Info_Integer:
+      process_parse_res(&fld_parse, .ToNewline)
+      process_parse_res(&fld_parse, .DataToInt)
+      if fld_parse.err == .Ok {
+        write_struct_int(strct, fld.offset, fld_parse.data_int, fld.type.size, info.signed)
+      } else {
+        println("parse_int failed:", fld_parse.data)
       }
-    case .Entity: 
-      switch line {
-      case "}":
-        append_soa(world, entity)
-        entity = WorldEnvEntity{}
-        indent_ctl(.DecIndent)
-        continue
-      case "Props{":
-        stage[indent_ctl(.IncIndent)] = .Props
-        continue
+      // printfln("Did we write? entity.%v = %v", fld_parse.res, struct_field_value_by_name(strct, fld_parse.res).(u32))
+    case Type_Info_Union:
+      // fixme: we can't assume this is Maybe(u32), must go deeper.
+      // solution: get the included types and recurse?
+      process_parse_res(&fld_parse, .ToNewline)
+      process_parse_res(&fld_parse, .DataToInt)
+      if fld_parse.err == .Ok {
+        data: Maybe(u32) = cast(u32)fld_parse.data_int
+        write_struct_data(strct, fld.offset, data)
+      } else {
+        println("parse_int failed:", fld_parse.data)
       }
-      struct_match, _ := regex.create("[A-Za-z_]*{{$")
-      field_match, _ := regex.create(" *([a-z_]+): +(.+)$")
-      name_and_data, _ := regex.match(field_match, line)
-      if len(name_and_data.groups) < 3 { continue }
-      for grp in name_and_data.groups[1:] {
-        print(grp, " ", sep = "")
+      // printfln("Did we write? entity.%v = %v", fld_parse.res, struct_field_value_by_name(strct, fld_parse.res).(Maybe(u32)))
+    case Type_Info_Array:
+      process_parse_res(&fld_parse, .ToMatching)
+      // println("array:", fld_parse)
+      data_list := split(strip_string(fld_parse.data), ",")
+      if len(data_list) > info.count {
+        data_list = data_list[:info.count]
       }
-      println()
-      fld_name := name_and_data.groups[1] 
-      fld_data := name_and_data.groups[2]
-      _, struct_test := regex.match(struct_match, fld_data)
-      if struct_test {
-        stage[indent_ctl(.IncIndent)] = .Struct
-        continue
-      }
-      fields: for name in struct_field_names(WorldEnvEntity) {
-        if name == fld_name {
-          _fld := struct_field_by_name(WorldEnvEntity, name)
-          switch type_info_of(_fld.type.id) {
-          case type_info_of(string):
-            write_struct_data(entity, _fld.offset, fld_data)
-            printfln("Did we write? entity.%v = %v", name, entity.name)
-            continue fields
-          case type_info_of(u32):
-            data, ok := parse_int(fld_data)
-            if ok {
-              write_struct_data(entity, _fld.offset, cast(u32)data)
-            } else {
-              println("parse_int failed:", line)
-            }
-            printfln("Did we write? entity.%v = %v", name, struct_field_value_by_name(entity, name).(u32))
-            continue fields
-          case type_info_of(Maybe(u32)):
-            data, ok := parse_int(fld_data)
-            if ok {
-              data: Maybe(u32) = cast(u32)data
-              write_struct_data(entity, _fld.offset, data)
-            } else {
-              println("parse_int failed:", line)
-            }
-            printfln("Did we write? entity.%v = %v", name, struct_field_value_by_name(entity, name).(Maybe(u32)))
-            continue fields
-          case: check_and_write_entity_struct_field(&entity, name, fld_data)
+      for n, idx in data_list {
+        #partial switch _info in info.elem.variant {
+        case Type_Info_Float:
+          data, ok := parse_f64(n)
+          if ok {
+            // println("write float array", idx, data)
+            write_struct_float(strct, fld.offset + uintptr(info.elem_size * idx), data, info.elem_size)
+          } else {
+            println("parse_f64 failed:", n)
           }
+        case Type_Info_Integer:
+          data, ok := parse_int(n)
+          if ok {
+            // println("write int array", idx, data)
+            write_struct_int(strct, fld.offset + uintptr(info.elem_size * idx), data, info.elem_size, _info.signed)
+          } else {
+            println("parse_int failed:", n)
+          }
+        case:
+          println("unhandled array item info", info.elem)
         }
       }
-    case .Struct:
-      if line == "}" {
-        indent_ctl(.DecIndent)
-        continue
+    case Type_Info_Named:
+      process_parse_res(&fld_parse, .ToMatching)
+      println("named:", strip_string(fld_parse.data))
+    case Type_Info_Struct:
+      process_parse_res(&fld_parse, .ToMatching)
+      // println("struct:", strip_string(fld_parse.data))
+      fld_data := struct_field_value(strct, fld)
+      read_data_into_struct(fld_data, fld_parse.data)
+    case Type_Info_Enum:
+      process_parse_res(&fld_parse, .ToNewline)
+      for enm, i in info.names {
+        if enm == fld_parse.res {
+          ptr := cast(^Type_Info_Enum_Value)struct_field_value(strct, fld).data
+          ptr^ = info.values[i]
+          break
+        }
       }
-      
-    case .Array:
-      if line == "]" {
-        indent_ctl(.DecIndent)
-        continue
-      }
-      
-    case .Props: 
-      if line == "}" {
-        indent_ctl(.DecIndent)
-        continue
-      }
-      props := strings.split(line,",")
-      if len(props) > 1 && props[len(props) - 1] == "" {
-        props = props[:len(props) - 1]
-      }
-      for prop in props {
-        for name in struct_field_names(WorldEnvEntity) {
-          if prop == name {
-            _fld := struct_field_by_name(WorldEnvEntity, name)
-            #partial switch info in _fld.type.variant {
-            case Type_Info_Boolean:
-              ptr := cast(^bool)rawptr(uintptr(any(entity).data) + _fld.offset)
-              ptr^ = true
-              // printfln("Did we write? entity.%v = %t", name, struct_field_value_by_name(entity, name).(bool))
-            }
+    case Type_Info_Dynamic_Array:
+      process_parse_res(&fld_parse, .ToMatching)
+      // println("dynamic array:", strip_string(fld_parse.data))
+      t := typeid_elem(fld.type.id)
+      ti := type_info_of(t)
+      #partial switch _info in ti.variant {
+      case Type_Info_Named:
+        name := _info.name
+        data := split(fld_parse.data, name)
+        if len(data) > 1 {
+          elem_size := type_info_of(fld.type.id).variant.(Type_Info_Dynamic_Array).elem_size
+          data = data[1:]
+          anyray := struct_field_value(strct, fld)
+          if _data_alloc, err := mem.alloc_bytes(elem_size); err == .None {
+            for datum in data {
+              v := any{rawptr(raw_data(_data_alloc)), t}
+              if d := take_thru_matching(datum); d.err == .Ok {
+                // println("v1:", v)
+                read_data_into_struct(v, d.res)
+                // println("v2:", v)
+                if ok := dyn_array_append(anyray, v); !ok {
+                  println("read_data_into_struct: Failed to append to dynamic array.")
+                }
+              } else { println("read_data_into_struct: dyn array of named: datum not as expected:", d, datum) }
+              mem.zero_explicit(raw_data(_data_alloc), elem_size)
+            } // todo: else it didn't work
+            mem.free_with_size(raw_data(_data_alloc), elem_size)
           }
+        }
+      case:
+        println("Dynamic Array of something:", t)
+      }
+    case:
+      println("info:", info)
+    }// check_and_write_entity_struct_field(&entity, name, fld_data)
+  }
+  if len(fld_parse.rem) > 0 {
+    read_data_into_struct(strct, fld_parse.rem)
+  }
+}
+
+toggle_boolean_fields :: proc(strct: any, field_names: []string) {
+  field_names := field_names
+  if len(field_names) > 1 && field_names[len(field_names) - 1] == "" {
+    field_names = field_names[:len(field_names) - 1]
+  }
+  for fld_name in field_names {
+    for name in struct_field_names(strct.id) {
+      if fld_name == name {
+        _fld := struct_field_by_name(strct.id, name)
+        #partial switch info in _fld.type.variant {
+        case Type_Info_Boolean:
+          ptr := cast(^bool)rawptr(uintptr(strct.data) + _fld.offset)
+          ptr^ = true
+          // printfln("Did we write? entity.%v = %t", name, struct_field_value_by_name(entity, name).(bool))
         }
       }
     }
   }
 }
 
-check_and_write_entity_struct_field :: proc(entity: ^WorldEnvEntity, field_name: string, line: string,) {
-  fld := struct_field_by_name(type_of(entity^), field_name)
-  _s := take_thru(line, is_open_brace).rem
-  if len(_s) == 0 { println("take_thru failed", line, _s, sep = ";"); return }
-  _s = take_until(_s, is_close_brace).rem
-  if len(_s) == 0 { println("take_until failed", line, _s, sep = ";"); return }
-  s_flds, _ := strings.split(_s,",")
-  for s_fld, idx in s_flds {
-    nv, _ := strings.split(s_fld, ":")
-    if len(nv) != 2 { println("split should have made 2 strings:", s_fld); return }
-    fld_name := nv[0]
-    fld_data := nv[1]
-    #partial switch info in fld.type.variant {
-    case Type_Info_Named:
-      for name in struct_field_names(fld.type.id) {
-        if name == fld_name {
-          _fld := struct_field_by_name(fld.type.id, name)
-          switch type_info_of(_fld.type.id) {
-          case type_info_of(u32):
-            data, ok := parse_int(fld_data)
-            if ok {
-              println("write u32 field", cast(u32)data)
-              write_struct_data(entity^, fld.offset + _fld.offset, data)
-            } else {
-              println("parse_int failed:", line)
-            }
-          case type_info_of(f32):
-            data, ok := parse_f32(fld_data)
-            if ok {
-              println("write f32 field", data)
-              write_struct_data(entity^, fld.offset + _fld.offset, data)
-            } else {
-              println("parse_f32 failed:", line)
-            }
-          }
-        }
-      }
-    case Type_Info_Array:
-      if info.elem == type_info_of(f32) {
-        data, ok := parse_f32(fld_data)
-        if ok {
-          println("write f32 array", idx, data)
-          write_struct_data(entity^, fld.offset + uintptr(size_of(f32) * idx), data)
-        } else {
-          println("parse_f32 failed:", line)
-        }
-      }
-    case: println("info: ", info)
-    }
+// Appends an element into a dynamic array for which we have no
+// runtime `Type`, only `typeid`s to work with.
+// Intended for unmarshalling.
+// Fails if `anyray` is not a dynamic array or if the `typeid` of
+// the the dynamic array's element and the `elem` pass aren't equal. 
+dyn_array_append :: proc(anyray: any, elem: any) -> bool {
+  ray_info := type_info_base(type_info_of(anyray.id))
+  dyn_info, ok := ray_info.variant.(Type_Info_Dynamic_Array)
+  if !ok {
+    println("dyn_array_append: 'anyray' not a dynamic array:", anyray, elem)
+    return false // not a dynamic array
+  } else if elem.id != dyn_info.elem.id {
+    println("dyn_array_append: typeid of 'elem' does not match 'anyray' element typeid:", anyray, elem)
+    return false // wrong element type
   }
-  println("Did we write? entity", entity^)
+  // Cast any.data, a rawptr now known to point to a Dynamic Array,
+  // to a pointer to a Raw_Dynamic_array, granting us access to its
+  // fields; data: rawptr, len, cap: int, and allocator. 
+  rda := (^runtime.Raw_Dynamic_Array)(anyray.data)
+  old_len := rda.len
+  elem_align := type_info_of(elem.id).align
+  new_len := runtime.__dynamic_array_append(rda, dyn_info.elem_size, elem_align, elem.data, 1)
+  return new_len == old_len + 1
 }
+
+// _resize_dynamic_array :: #force_inline proc(a: ^Raw_Dynamic_Array, size_of_elem, align_of_elem: int, length: int, should_zero: bool, loc := #caller_location) -> runtime.Allocator_Error {
+//   if a == nil {
+//     return nil
+//   }
+  
+//   if should_zero && a.len < length {
+//     num_reused := min(a.cap, length) - a.len
+//     intrinsics.mem_zero(([^]byte)(a.data)[a.len*size_of_elem:], num_reused*size_of_elem)
+//   }
+  
+//   if length <= a.cap {
+//     a.len = max(length, 0)
+//     return nil
+//   }
+  
+//   if a.allocator.procedure == nil {
+//     a.allocator = context.allocator
+//   }
+//   assert(a.allocator.procedure != nil)
+  
+//   old_size  := a.cap  * size_of_elem
+//   new_size  := length * size_of_elem
+//   allocator := a.allocator
+  
+//   new_data : []byte
+//   if should_zero {
+//     new_data = runtime.mem_resize(a.data, old_size, new_size, align_of_elem, allocator, loc) or_return
+//   } else {
+//     new_data = runtime.non_zero_mem_resize(a.data, old_size, new_size, align_of_elem, allocator, loc) or_return
+//   }
+//   if new_data == nil && new_size > 0 {
+//     return .Out_Of_Memory
+//   }
+  
+//   a.data = raw_data(new_data)
+//   a.len = length
+//   a.cap = length
+//   return nil
+// }
 
 IndentStr :: "  "
 
@@ -327,192 +391,79 @@ indent_ctl :: proc(ictl:= IndentCtl.GetIndent) -> int {
   return i
 }
 
-iostr_indent :: proc(w: io.Stream) {
-  for _ in 0..<indent_ctl() {
-    wprint(w, IndentStr)
-  }
-}
-
-iostr_open :: proc(w: io.Stream, title: string, indent := true) {
-  if indent { iostr_indent(w) }
-  wprintln(w, title, "{", sep = "")
-  indent_ctl(.IncIndent)
-}
-
-iostr_close :: proc(w: io.Stream, newline := true) {
-  indent_ctl(.DecIndent)
-  iostr_indent(w)
-  wprint(w, "}")
-  if newline { wprintln(w) }
-}
-
-iostr_struct :: proc(w: io.Stream, thing: any, info: ^Type_Info_Named, not_elem := true) {
-  iostr_open(w, info.name, not_elem)
-  field_count := struct_field_count(info.base.id)
-  for fn in 0..<field_count {
-    fld := struct_field_at(info.base.id, fn)
-    iostr_field(w, fld.name, struct_field_value(thing, fld), fld.type)
-  }
-  iostr_close(w, not_elem)
-}
-
-iostr_field :: proc(w: io.Stream, name: string, data: any, info: ^Type_Info) {
-  iostr_indent(w)
-  wprintf(w, "%v: ", name)
-  base := type_info_base(info)
-  #partial switch &v in info.variant {
-  case Type_Info_Array:
-    
-  case Type_Info_Named:
-    if is_enum(base) {
-      wprint(w, data)
-    } else if is_array(base) {
-      iostr_array(w, data, &base.variant.(Type_Info_Array))
-    } else {
-      iostr_struct(w, data, &v, false)
-    }
-  case Type_Info_Integer: iostr_int(w, data, info.size, v.signed)
-  case Type_Info_Float: iostr_float(w, data, info.size)
-  // case runtime.Type_Info_Rune:
-  case Type_Info_String:
-    a := data.(string)
-    wprint(w, a)
-  case Type_Info_Boolean:
-  }
-  wprintln(w)
-}
-
-iostr_array :: proc(w: io.Stream, thing: any, info: ^Type_Info_Array, not_elem := false) {
-  a_ptr := rawptr(uintptr(any(thing).data))
-  if not_elem { iostr_indent(w) }
-  wprintfln(w, "[")
-  indent_ctl(.IncIndent)
-  iostr_indent(w)
-  iostr_for_each_raw(w, a_ptr, info.elem, proc(w: io.Stream, v: any) {
-    wprintf(w, "%v,", v)
-  })
-  wprintln(w)
-  indent_ctl(.DecIndent)
-  iostr_indent(w)
-  wprint(w, "]")
-  if not_elem { wprintln(w) }
-}
-
-iostr_int :: proc(w: io.Stream, data: any, size: int, signed: bool) {
-  if signed {
-    switch size {
-    case size_of(i8):
-      a := cast(^i8)rawptr(uintptr(data.data))
-      wprint(w, a^)
-    case size_of(i16):
-      a := cast(^i16)rawptr(uintptr(data.data))
-      wprint(w, a^)
-    case size_of(i32):
-      a := cast(^i32)rawptr(uintptr(data.data))
-      wprint(w, a^)
-    case size_of(i64):
-      a := cast(^i64)rawptr(uintptr(data.data))
-      wprint(w, a^)
-    case size_of(i128):
-      a := cast(^i128)rawptr(uintptr(data.data))
-      wprint(w, a^)
-    }
-  } else {
-    switch size {
-    case size_of(u8):
-      a := cast(^u8)rawptr(uintptr(data.data))
-      wprint(w, a^)
-    case size_of(u16):
-      a := cast(^u16)rawptr(uintptr(data.data))
-      wprint(w, a^)
-    case size_of(u32):
-      a := cast(^u32)rawptr(uintptr(data.data))
-      wprint(w, a^)
-    case size_of(u64):
-      a := cast(^u64)rawptr(uintptr(data.data))
-      wprint(w, a^)
-    case size_of(u128):
-      a := cast(^u128)rawptr(uintptr(data.data))
-      wprint(w, a^)
-    }
-  }
-}
-
-iostr_float :: proc(w: io.Stream, data: any, size: int) {
-  switch size {
-  case size_of(f16):
-    a := cast(^f16)rawptr(uintptr(data.data))
-    wprint(w, a^)
-  case size_of(f32):
-    a := cast(^f32)rawptr(uintptr(data.data))
-    wprint(w, a^)
-  case size_of(f64):
-    a := cast(^f64)rawptr(uintptr(data.data))
-    wprint(w, a^)
-  }
-}
-
 write_struct_data :: proc(thing: any, offset: uintptr, data: $T, maybe := false) {
   ptr := cast(^T)rawptr(uintptr(thing.data) + offset)
   ptr^ = data
 }
 
-iostr_for_each_raw :: proc(w: io.Stream,a_ptr: rawptr, ti: ^Type_Info, f: proc(io.Stream, any)) {
-  v := type_info_base(ti).variant.(Type_Info_Array)
-  s := v.elem_size
-  c := v.count
-  #partial switch info in v.elem.variant {
-  case Type_Info_Integer:
-    for i in 0..<c {
-      if info.signed {
-        switch s {
-        case size_of(i8):
-          a := cast([^]i8)a_ptr
-          f(w, a[i])
-        case size_of(i16):
-          a := cast([^]i16)a_ptr
-          f(w, a[i])
-        case size_of(i32):
-          a := cast([^]i32)a_ptr
-          f(w, a[i])
-        case size_of(i64):
-          a := cast([^]i64)a_ptr
-          f(w, a[i])
-        case size_of(i128):
-          a := cast([^]i128)a_ptr
-          f(w, a[i])
-        }
-      } else {
-        switch s {
-        case size_of(u8):
-          a := cast([^]u8)a_ptr
-          f(w, a[i])
-        case size_of(u16):
-          a := cast([^]u16)a_ptr
-          f(w, a[i])
-        case size_of(u32):
-          a := cast([^]u32)a_ptr
-          f(w, a[i])
-        case size_of(u64):
-          a := cast([^]u64)a_ptr
-          f(w, a[i])
-        case size_of(u128):
-          a := cast([^]u128)a_ptr
-          f(w, a[i])
-        }
-      }
+write_struct_int :: proc(strct: any, offset: uintptr, data: int, size: int, signed: bool) {
+  ptr := rawptr(uintptr(strct.data) + offset)
+  if signed {
+    switch size {
+    case size_of(i8):
+      a := cast(^i8)ptr
+      a^ = cast(i8)data
+    case size_of(i16):
+      a := cast(^i16)ptr
+      a^ = cast(i16)data
+    case size_of(i32):
+      a := cast(^i32)ptr
+      a^ = cast(i32)data
+    case size_of(i64):
+      a := cast(^i64)ptr
+      a^ = cast(i64)data
+    case size_of(i128):
+      a := cast(^i128)ptr
+      a^ = cast(i128)data
     }
-  case Type_Info_Float:
-    a := cast([^]f32)a_ptr
-    for i in 0..<c {
-      f(w, a[i])
-    }
-  case Type_Info_Named:
-    a := cast([^]type_of(v.elem.id))a_ptr
-    for i in 0..<c {
-      f(w, a[i])
+  } else {
+    switch size {
+    case size_of(u8):
+      a := cast(^u8)ptr
+      a^ = cast(u8)data
+    case size_of(u16):
+      a := cast(^u16)ptr
+      a^ = cast(u16)data
+    case size_of(u32):
+      a := cast(^u32)ptr
+      a^ = cast(u32)data
+    case size_of(u64):
+      a := cast(^u64)ptr
+      a^ = cast(u64)data
+    case size_of(u128):
+      a := cast(^u128)ptr
+      a^ = cast(u128)data
     }
   }
+}
+
+write_struct_float :: proc(strct: any, offset: uintptr, data: f64, size: int) {
+  ptr := rawptr(uintptr(strct.data) + offset)
+  switch size {
+  case size_of(f16):
+    a := cast(^f16)ptr
+    a^ = cast(f16)data
+  case size_of(f32):
+    a := cast(^f32)ptr
+    a^ = cast(f32)data
+  case size_of(f64):
+    a := cast(^f64)ptr
+    a^ = cast(f64)data
+  }
+}
+
+println_max :: proc(labl: string, s: string, max_len: int, sep := ": ") {
+  l := len(s)
+  if len(s) == 0 {
+    println(labl, "{empty string}", sep = sep)
+  }
+  out : string
+  if max_len > l {
+    out = s
+  } else {
+    out = s[:max_len]
+  }
+  println(labl, out, sep = sep)
 }
 
 

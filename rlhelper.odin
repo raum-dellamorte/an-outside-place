@@ -10,6 +10,8 @@ import math "core:math/linalg"
 import rl "vendor:raylib"
 import rlgl "vendor:raylib/rlgl"
 
+// rl :: raylib
+
 MMI :: rl.MaterialMapIndex
 SLI :: rlgl.ShaderLocationIndex
 SADT :: rlgl.ShaderAttributeDataType

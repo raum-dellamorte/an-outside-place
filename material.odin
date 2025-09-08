@@ -2,6 +2,7 @@ package raumortis
 
 import "core:fmt"
 import "core:strings"
+
 import rl "vendor:raylib"
 
 MatError :: enum {
