@@ -192,15 +192,25 @@ read_data_into_struct :: proc(strct: any, data: string) {
       }
       // printfln("Did we write? entity.%v = %v", fld_parse.res, struct_field_value_by_name(strct, fld_parse.res).(u32))
     case Type_Info_Union:
-      // fixme: we can't assume this is Maybe(u32), must go deeper.
-      // solution: get the included types and recurse?
-      process_parse_res(&fld_parse, .ToNewline)
-      process_parse_res(&fld_parse, .DataToInt)
-      if fld_parse.err == .Ok {
-        data: Maybe(u32) = cast(u32)fld_parse.data_int
-        write_struct_data(strct, fld.offset, data)
+      // unfinished: currently supports Maybe of Integer types only.
+      // no other Unions or non-integer Maybe
+      println("Maybe Union:", info.variants)
+      if len(info.variants) == 1 {
+        // Maybe(x)
+        #partial switch _info in info.variants[0].variant {
+        case Type_Info_Integer:
+          process_parse_res(&fld_parse, .ToNewline)
+          process_parse_res(&fld_parse, .DataToInt)
+          if fld_parse.err == .Ok {
+            write_struct_int(strct, fld.offset, fld_parse.data_int, info.variants[0].size, _info.signed, is_maybe = true)
+          } else {
+            println("parse_int failed:", fld_parse.data)
+          }
+        case:
+          println("Unhandled Maybe variant")
+        }
       } else {
-        println("parse_int failed:", fld_parse.data)
+        println("unhandled Union variant")
       }
       // printfln("Did we write? entity.%v = %v", fld_parse.res, struct_field_value_by_name(strct, fld_parse.res).(Maybe(u32)))
     case Type_Info_Array:
@@ -338,43 +348,93 @@ write_struct_data :: proc(thing: any, offset: uintptr, data: $T, maybe := false)
   ptr^ = data
 }
 
-write_struct_int :: proc(strct: any, offset: uintptr, data: int, size: int, signed: bool) {
+write_struct_int :: proc(strct: any, offset: uintptr, data: int, size: int, signed: bool, is_maybe := false) {
   ptr := rawptr(uintptr(strct.data) + offset)
-  if signed {
-    switch size {
-    case size_of(i8):
-      a := cast(^i8)ptr
-      a^ = cast(i8)data
-    case size_of(i16):
-      a := cast(^i16)ptr
-      a^ = cast(i16)data
-    case size_of(i32):
-      a := cast(^i32)ptr
-      a^ = cast(i32)data
-    case size_of(i64):
-      a := cast(^i64)ptr
-      a^ = cast(i64)data
-    case size_of(i128):
-      a := cast(^i128)ptr
-      a^ = cast(i128)data
+  if is_maybe {
+    if signed {
+      switch size {
+      case size_of(i8):
+        a := cast(^Maybe(i8))ptr
+        _data : Maybe(i8) = cast(i8)data
+        a^ = _data
+      case size_of(i16):
+        a := cast(^Maybe(i16))ptr
+        _data : Maybe(i16) = cast(i16)data
+        a^ = _data
+      case size_of(i32):
+        a := cast(^Maybe(i32))ptr
+        _data : Maybe(i32) = cast(i32)data
+        a^ = _data
+      case size_of(i64):
+        a := cast(^Maybe(i64))ptr
+        _data : Maybe(i64) = cast(i64)data
+        a^ = _data
+      case size_of(i128):
+        a := cast(^Maybe(i128))ptr
+        _data : Maybe(i128) = cast(i128)data
+        a^ = _data
+      }
+    } else {
+      switch size {
+      case size_of(u8):
+        a := cast(^Maybe(u8))ptr
+        _data : Maybe(u8) = cast(u8)data
+        a^ = _data
+      case size_of(u16):
+        a := cast(^Maybe(u16))ptr
+        _data : Maybe(u16) = cast(u16)data
+        a^ = _data
+      case size_of(u32):
+        a := cast(^Maybe(u32))ptr
+        _data : Maybe(u32) = cast(u32)data
+        a^ = _data
+      case size_of(u64):
+        a := cast(^Maybe(u64))ptr
+        _data : Maybe(u64) = cast(u64)data
+        a^ = _data
+      case size_of(u128):
+        a := cast(^Maybe(u128))ptr
+        _data : Maybe(u128) = cast(u128)data
+        a^ = _data
+      }
     }
   } else {
-    switch size {
-    case size_of(u8):
-      a := cast(^u8)ptr
-      a^ = cast(u8)data
-    case size_of(u16):
-      a := cast(^u16)ptr
-      a^ = cast(u16)data
-    case size_of(u32):
-      a := cast(^u32)ptr
-      a^ = cast(u32)data
-    case size_of(u64):
-      a := cast(^u64)ptr
-      a^ = cast(u64)data
-    case size_of(u128):
-      a := cast(^u128)ptr
-      a^ = cast(u128)data
+    if signed {
+      switch size {
+      case size_of(i8):
+        a := cast(^i8)ptr
+        a^ = cast(i8)data
+      case size_of(i16):
+        a := cast(^i16)ptr
+        a^ = cast(i16)data
+      case size_of(i32):
+        a := cast(^i32)ptr
+        a^ = cast(i32)data
+      case size_of(i64):
+        a := cast(^i64)ptr
+        a^ = cast(i64)data
+      case size_of(i128):
+        a := cast(^i128)ptr
+        a^ = cast(i128)data
+      }
+    } else {
+      switch size {
+      case size_of(u8):
+        a := cast(^u8)ptr
+        a^ = cast(u8)data
+      case size_of(u16):
+        a := cast(^u16)ptr
+        a^ = cast(u16)data
+      case size_of(u32):
+        a := cast(^u32)ptr
+        a^ = cast(u32)data
+      case size_of(u64):
+        a := cast(^u64)ptr
+        a^ = cast(u64)data
+      case size_of(u128):
+        a := cast(^u128)ptr
+        a^ = cast(u128)data
+      }
     }
   }
 }
