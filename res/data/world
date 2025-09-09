@@ -13,6 +13,7 @@ Entity{
     0,0,0,
   ]
   health: 100
+  # action_is_blocking: 1
   actions: [
     ActionTracker{
       id: 1

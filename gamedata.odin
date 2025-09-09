@@ -140,7 +140,7 @@ data_to_world :: proc(world: ^WorldEnvSOA, data: string) {
   indent_ctl(.ResetIndent)
   entity:WorldEnvEntity = {}
   entity.actions = make_action_tracker_list()
-  before, ent, rem : = "", "", data
+  before, ent, rem : = "", "", remove_comments(data)
   for ; len(rem) > 0 ; {
     before, ent, rem = three_strings(take_thru_matching(rem))
     read_data_into_struct(entity, ent)
@@ -261,6 +261,18 @@ toggle_boolean_fields :: proc(strct: any, field_names: []string) {
       }
     }
   }
+}
+
+remove_comments :: proc(s: string) -> string {
+  comments := split(s, "#")
+  if len(comments) == 1 {
+    return s
+  }
+  out := comments[0]
+  for _s in comments[1:] {
+    out = concatenate({out, take_thru(_s, is_newline).rem})
+  }
+  return out
 }
 
 Dyn_Array_Append_Err :: enum {
