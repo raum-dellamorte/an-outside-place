@@ -29,8 +29,9 @@ main :: proc() {
   rl.SetTargetFPS(60)
   
   // Game Vars
-  ctx := make_game_context()
-  defer delete_game_context(ctx)
+  _ctx := make_game_context()
+  defer delete_game_context(_ctx)
+  ctx := &_ctx
   world_file := #load("res/data/world", string)
   data_to_world(&ctx.world, world_file)
   // For testing purposes, print out the world loaded from the world file
@@ -81,13 +82,13 @@ main :: proc() {
         case .NoOp: {}
         }
         // Check Collision
-        check_for_collisions(&ctx)
+        check_for_collisions(ctx)
       } else { // In Combat!
-        process_combat_tic(&ctx)
+        process_combat_tic(ctx)
       }
       // Move.studiostudio. Camera
-      cam_follow_world_target(&ctx)
-      calc_timestamp = write_calc_time(&ctx, draw_timestamp)
+      cam_follow_world_target(ctx)
+      calc_timestamp = write_calc_time(ctx, draw_timestamp)
       tic_counter += TIC
       // Skip render if overtime
       calc_time := calc_timestamp - draw_timestamp
@@ -97,14 +98,24 @@ main :: proc() {
         continue game_loop
       }
       tic_ready = false
+      ctx^.tic_ready = true
+      ctx^.tic_counter += 1
+		  if ctx.tic_counter % 5 == 0 {
+        list := msg_page_lines(&ctx.msg_system)
+        if !msg_on_last_page(&ctx.msg_system) {
+          msg_next(&ctx.msg_system)
+        }
+		  }
+      rebuild_page_idcs(&ctx.msg_system)
     }
     // Render Phase
-    render(&ctx)
+    render(ctx)
     // Only render next pass if undertime
-    draw_timestamp = write_draw_time(&ctx, calc_timestamp, draw_timestamp)
+    draw_timestamp = write_draw_time(ctx, calc_timestamp, draw_timestamp)
     if draw_timestamp - tic_counter >= TIC_MIN_TIME {
       tic_ready = true
     }
+    ctx^.tic_ready = false
   }
 }
 
@@ -124,6 +135,27 @@ draw_gui :: proc(ctx: ^GameContext) {
   // Health and FPS and other garbage for the player to read
   rl.DrawText(rl.TextFormat("FPS: % 6.02f", ctx.fps), 50, 50, 20, rl.RED)
   // player := &ctx.world[get_active_player(ctx)]
+  ww := cast(f32)rl.GetScreenWidth()
+  wh := cast(f32)rl.GetScreenHeight()
+  dlg_w : f32 = 600.0
+  dlg_h : f32 = 260.0
+  x := ww - dlg_w - 10.0
+  y := wh - dlg_h - 10.0
+  dlg_bg := rl.Rectangle { x = x, y = y, width = dlg_w, height = dlg_h }
+  rl.DrawRectangleRounded(dlg_bg, .15, 5, { 100, 100, 100, 190 } )
+  // First we need text and it needs to be accessable from GameContext
+  // maybe draw text into a framebuffer and show the bottom of it by default to allow for scrolling.
+  
+  i : i32 = 0
+  for line in msg_page_lines(&ctx.msg_system) {
+    // pos := msg_ptr_pos(&ctx.msg_system) 
+    // if pos == .Empty || (pos == .Alpha && i != 0) { break }
+    rl.DrawText(rl.TextFormat("%s", msg_read_line(&ctx.msg_system, line)), auto_cast dlg_bg.x + 10, auto_cast dlg_bg.y + 10 + (i * 25), 20, rl.WHITE)
+    // msg_next(&ctx.msg_system)
+    i += 1
+    // if i == 10 { break }
+  }
+  // for r := i; r > 0; r -= 1 { msg_prev(&ctx.msg_system) }
 }
 
 draw_world :: proc(ctx: ^GameContext) {
@@ -211,7 +243,7 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
         switch action_tracker.timer.stage {
         case .Prep:
           if action.prep != 0 && action_tracker.timer.seconds == 0 {
-            println(entity.name, "prepares", action.name, "against", action_focus.name)
+            msg_add(&ctx.msg_system, entity.name, "prepares", action.name, "against", action_focus.name)
             action_tracker.timer.seconds += 1
           } else if action.prep == 0 {
             action_tracker.timer.stage = .BlockingPrep
@@ -230,7 +262,7 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
         case .BlockingPrep:
           if action.blocking_prep != 0 && action_tracker.timer.seconds == 0 {
             entity.action_is_blocking = action_tracker.id
-            println(
+            msg_add(&ctx.msg_system,
               entity.name, "focuses solely on", action.name,
               "against", action_focus.name,
             )
@@ -253,11 +285,11 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
         case .Perform:
           if action.perform != 0 && action_tracker.timer.seconds == 0 {
             entity.action_is_blocking = action_tracker.id
-            println(
+            msg_add(&ctx.msg_system,
               entity.name, "uses", action.name,
               "against", action_focus.name,
             )
-            println(
+            msg_add(&ctx.msg_system,
               entity.name, "attacks", action_focus.name,
               "for", action.action.base_damage, "damage over", action.perform,"seconds.",
             )
@@ -276,20 +308,20 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
             action_focus.health = 0
             action_focus.is_alive = false
             if action_focus.is_player {
-              println("You were defeated by", entity.name)
-              println("YOU DIED!")
+              msg_add(&ctx.msg_system, "You were defeated by", entity.name)
+              msg_add(&ctx.msg_system, "YOU DIED!")
             } else {
-              println(action_focus.name, "has been defeated by", entity.name,"!")
+              msg_add(&ctx.msg_system, action_focus.name, "has been defeated by", entity.name,"!")
             }
             //
             // entity.action_timer.seconds = 0 // maybe???
             break fight_loop
           } else {
             action_focus.health -= damage_this_tic
-            println(
+            msg_add(&ctx.msg_system,
               action_focus.name,
               "took", damage_this_tic,"damage.")
-            println(
+            msg_add(&ctx.msg_system,
               action_focus.name,"Health:", action_focus.health, ":",
             )
           }
@@ -298,7 +330,7 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
         case .BlockingCooldown:
           if action.blocking_cool != 0 && action_tracker.timer.seconds == 0 {
             entity.action_is_blocking = action_tracker.id
-            println(
+            msg_add(&ctx.msg_system,
               entity.name, "is paralyzed after using", action.name,
               "for", action.blocking_cool, "seconds.",
             )
@@ -307,7 +339,7 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
             action_tracker.timer.stage = .Cooldown
             continue stage_loop
           } else if action.blocking_cool == action_tracker.timer.seconds {
-            println(entity.name, "recovers from paralysis induced by", action.name, ".")
+            msg_add(&ctx.msg_system, entity.name, "recovers from paralysis induced by", action.name, ".")
             entity.action_is_blocking = nil
             action_tracker.timer.stage = .Cooldown
             action_tracker.timer.seconds = 0
@@ -317,7 +349,7 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
           break stage_loop
         case .Cooldown:
           if action.cool != 0 && action_tracker.timer.seconds == 0 {
-            println(
+            msg_add(&ctx.msg_system,
               entity.name, "cannot use", action.name,
               "for", action.cool, "seconds.",
             )
@@ -407,4 +439,3 @@ gen_avg_draw_time :: proc(ctx: ^GameContext) -> f64 {
   }
   return avg / 120.0
 }
-

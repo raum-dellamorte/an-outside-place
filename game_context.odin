@@ -7,12 +7,14 @@ ShaderDir :: "res/shaders/"
 make_game_context :: proc() -> GameContext {
   world := make_world_env_soa()
   studio := gen_studio()
+  msg_system := make_msg_system(500, 50, 10)
   combatants := make([dynamic]u32, 0, 50)
   prev_calc_times := [120]f64{0..<120 = 60.0}
   prev_draw_times := [120]f64{0..<120 = 60.0}
   return GameContext{
     world = world,
     studio = studio,
+    msg_system = msg_system,
     combatants = combatants,
     prev_calc_times = prev_calc_times,
     calc_time_ptr = 0,
@@ -82,6 +84,7 @@ gen_studio :: proc() -> Studio { // maybe take a Config struct?
 GameContext :: struct {
   world: WorldEnvSOA,
   studio: Studio,
+  msg_system: MsgSystem,
   combatants: [dynamic]u32,
   prev_calc_times: [120]f64,
   calc_time_ptr: int,
@@ -90,6 +93,8 @@ GameContext :: struct {
   draw_time_ptr: int,
   avg_draw_time: f64,
   fps: f64,
+  tic_ready: bool,
+  tic_counter: u64,
   
   // I'm sure there will be other things to keep track of
 }
@@ -97,6 +102,7 @@ delete_game_context :: proc(game_context: GameContext) {
   ctx := game_context
   world := ctx.world
   combatants := ctx.combatants
+  delete_msg_system(&ctx.msg_system)
   delete_studio(ctx.studio)
   delete(combatants)
   delete_world(world)
@@ -162,5 +168,3 @@ get_shader_set :: proc(name: string) -> ShaderSet {
     shader = shader,
   }
 }
-
-
