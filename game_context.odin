@@ -2,11 +2,15 @@ package raumortis
 
 import rl "vendor:raylib"
 
+// constants
+
 ShaderDir :: "res/shaders/"
+
+// make_* 
 
 make_game_context :: proc() -> GameContext {
   world := make_world_env_soa()
-  studio := gen_studio()
+  studio := make_studio()
   msg_system := make_msg_system(500, 50, 10)
   combatants := make([dynamic]u32, 0, 50)
   prev_calc_times := [120]f64{0..<120 = 60.0}
@@ -23,12 +27,7 @@ make_game_context :: proc() -> GameContext {
   }
 }
 
-make_world_env_soa :: proc() -> (world: WorldEnvSOA) {
-  world  = make_soa(WorldEnvSOA, 0, 100)
-  return
-}
-
-gen_studio :: proc() -> Studio { // maybe take a Config struct?
+make_studio :: proc() -> Studio { // maybe take a Config struct? and an alloc?
   // Camera
   camera := rl.Camera3D {
     position   = [3]f32{0, 2, 4},
@@ -40,7 +39,6 @@ gen_studio :: proc() -> Studio { // maybe take a Config struct?
   // Shaders
   shaders := make_shaders_list()
   instanced := get_shader_set("instanced")
-  defer rl.UnloadShader(instanced.shader) // Segfaults if you don't defer rl.WindowClose()
   instanced.shader.locs[SLI.MATRIX_MVP] = i32(
     rl.GetShaderLocation(instanced.shader, "mvp"),
   )
@@ -71,7 +69,6 @@ gen_studio :: proc() -> Studio { // maybe take a Config struct?
   //   textures[:],
   //   {},
   // )
-  // defer delete_mat_helper(cube_mat_helper)
   
   // cube.materials = cube_mat_helper.pointer
   
@@ -80,6 +77,56 @@ gen_studio :: proc() -> Studio { // maybe take a Config struct?
     shaders = shaders,
   }
 }
+
+make_world_env_soa :: proc() -> (world: WorldEnvSOA) {
+  world  = make_soa(WorldEnvSOA, 0, 100)
+  return
+}
+
+make_shaders_list :: proc() -> [dynamic]ShaderSet {
+  out := make([dynamic]ShaderSet,0,10)
+  return out
+}
+
+// delete_*
+
+delete_game_context :: proc(game_context: GameContext) {
+  ctx := game_context
+  world := ctx.world
+  combatants := ctx.combatants
+  delete_msg_system(&ctx.msg_system)
+  delete_studio(ctx.studio)
+  delete(combatants)
+  delete_world(world)
+}
+
+delete_studio :: proc(studio: Studio) {
+	_studio := studio
+	shaders := _studio.shaders
+	for _ in 0..<len(shaders) {
+    shader_set : ShaderSet = pop(&shaders)
+		rl.UnloadShader(shader_set.shader)
+	}
+	delete(shaders)
+	// delete_mat_helper(mat_helper)
+}
+Studio :: struct {
+  camera: rl.Camera3D,
+  shaders: [dynamic]ShaderSet,
+}
+
+delete_world :: proc(world: WorldEnvSOA) {
+  for &thing in world {
+    if thing.actions != nil {
+      actions := thing.actions
+      // thing.actions = nil
+      delete(actions)
+    }
+  }
+  delete_soa(world)
+}
+
+// types and structs
 
 GameContext :: struct {
   world: WorldEnvSOA,
@@ -97,25 +144,6 @@ GameContext :: struct {
   tic_counter: u64,
   
   // I'm sure there will be other things to keep track of
-}
-delete_game_context :: proc(game_context: GameContext) {
-  ctx := game_context
-  world := ctx.world
-  combatants := ctx.combatants
-  delete_msg_system(&ctx.msg_system)
-  delete_studio(ctx.studio)
-  delete(combatants)
-  delete_world(world)
-}
-
-Studio :: struct {
-  camera: rl.Camera3D,
-  shaders: [dynamic]ShaderSet,
-}
-delete_studio :: proc(studio: Studio) {
-  _studio := studio
-  shaders := _studio.shaders
-  delete(shaders)
 }
 
 WorldEnvSOA :: #soa[dynamic]WorldEnvEntity
@@ -136,27 +164,13 @@ WorldEnvEntity :: struct {
   health: u32 `json:"health"`,
   actions: ActionTrackers `json:"actions"`,
 }
-delete_world :: proc(world: WorldEnvSOA) {
-  for &thing in world {
-    if thing.actions != nil {
-      actions := thing.actions
-      // thing.actions = nil
-      delete(actions)
-    }
-  }
-  delete_soa(world)
-}
 
 ShaderSet :: struct {
   name: string,
   shader: rl.Shader,
 }
 
-make_shaders_list :: proc() -> [dynamic]ShaderSet {
-  out := make([dynamic]ShaderSet,0,10)
-  return out
-}
-
+// helpers
 get_shader_set :: proc(name: string) -> ShaderSet {
   _vert := []string { ShaderDir, name, ".vs"}
   _frag := []string { ShaderDir, name, ".fs"}
