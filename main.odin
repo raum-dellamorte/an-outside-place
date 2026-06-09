@@ -51,6 +51,7 @@ main :: proc() {
   calc_timestamp: f64 = rl.GetTime()
   draw_timestamp: f64 = rl.GetTime()
   tic_ready := true
+  autoscroll := true
   
   // Game Loop
   game_loop: for !rl.WindowShouldClose() {
@@ -86,7 +87,17 @@ main :: proc() {
       } else { // In Combat!
         process_combat_tic(ctx)
       }
-      // Move.studiostudio. Camera
+      // if mouse is inside combat log bounds
+      // check for and apply scrolling
+      mouse_pos := rl.GetMousePosition();
+      if rl.CheckCollisionPointRec(mouse_pos, ctx.combat_log.bounds) {
+        autoscroll = false // don't autoscroll when the mouse is in the combat_log
+        wheel := rl.GetMouseWheelMove()
+        msg_scroll(&ctx.msg_system, int(wheel))
+      } else if !autoscroll {
+        autoscroll = true // resume autoscroll
+      }
+      // Move Camera
       cam_follow_world_target(ctx)
       calc_timestamp = write_calc_time(ctx, draw_timestamp)
       tic_counter += TIC
@@ -101,8 +112,7 @@ main :: proc() {
       ctx^.tic_ready = true
       ctx^.tic_counter += 1
 		  if ctx.tic_counter % 5 == 0 {
-        list := msg_page_lines(&ctx.msg_system)
-        if !msg_on_last_page(&ctx.msg_system) {
+        if autoscroll && !msg_on_last_page(&ctx.msg_system) {
           msg_next(&ctx.msg_system)
         }
 		  }
@@ -135,22 +145,7 @@ draw_gui :: proc(ctx: ^GameContext) {
   // Health and FPS and other garbage for the player to read
   rl.DrawText(rl.TextFormat("FPS: % 6.02f", ctx.fps), 50, 50, 20, rl.RED)
   // player := &ctx.world[get_active_player(ctx)]
-  ww := cast(f32)rl.GetScreenWidth()
-  wh := cast(f32)rl.GetScreenHeight()
-  dlg_w : f32 = 600.0
-  dlg_h : f32 = 260.0
-  x := ww - dlg_w - 10.0
-  y := wh - dlg_h - 10.0
-  dlg_bg := rl.Rectangle { x = x, y = y, width = dlg_w, height = dlg_h }
-  txt_x: i32 = auto_cast dlg_bg.x + 10
-  txt_y_top: i32 = auto_cast dlg_bg.y + 10
-  rl.DrawRectangleRounded(dlg_bg, .15, 5, { 100, 100, 100, 190 } )
-  // Odin is `for value, index in array ...` and not index, value
-  for line, i in msg_page_lines(&ctx.msg_system) {
-    txt := msg_read_line(&ctx.msg_system, line)
-    txt_y := txt_y_top + (cast(i32)i * 25)
-    rl.DrawText(rl.TextFormat("%s", txt), txt_x, txt_y, 20, rl.WHITE)
-  }
+  draw_combat_log(ctx)
 }
 
 draw_world :: proc(ctx: ^GameContext) {

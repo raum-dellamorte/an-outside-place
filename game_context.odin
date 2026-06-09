@@ -12,6 +12,7 @@ make_game_context :: proc() -> GameContext {
   world := make_world_env_soa()
   studio := make_studio()
   msg_system := make_msg_system(500, 50, 10)
+  combat_log := new_combat_log()
   combatants := make([dynamic]u32, 0, 50)
   prev_calc_times := [120]f64{0..<120 = 60.0}
   prev_draw_times := [120]f64{0..<120 = 60.0}
@@ -19,6 +20,7 @@ make_game_context :: proc() -> GameContext {
     world = world,
     studio = studio,
     msg_system = msg_system,
+    combat_log = combat_log,
     combatants = combatants,
     prev_calc_times = prev_calc_times,
     calc_time_ptr = 0,
@@ -132,6 +134,7 @@ GameContext :: struct {
   world: WorldEnvSOA,
   studio: Studio,
   msg_system: MsgSystem,
+  combat_log: CombatLog,
   combatants: [dynamic]u32,
   prev_calc_times: [120]f64,
   calc_time_ptr: int,

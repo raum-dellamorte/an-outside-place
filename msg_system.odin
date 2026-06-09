@@ -104,6 +104,11 @@ msg_prev :: proc(msgs: ^MsgSystem) {
   msgs^.ptr = ((msgs.ptr - 1) %% msgs.max_lines)
 }
 
+msg_scroll :: proc(msgs: ^MsgSystem, scroll: int) {
+  if msgs.len == 0 { return }
+  msgs^.ptr = ((msgs.ptr - scroll) %% msgs.max_lines)
+}
+
 msg_read :: proc(msgs: ^MsgSystem) -> string {
   if msgs.len == 0 { return "" }
   return string(msgs.msgs[msgs.ptr])
