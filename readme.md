@@ -7,7 +7,7 @@ An Outside Place (Name Subject To Change)
 
 Odin is good.
 
-Compiles with [Odin version dev-2025-01](https://github.com/odin-lang/Odin/tree/dev-2025-01)
+Compiles with [Odin version dev-2026-05](https://github.com/odin-lang/Odin/releases/tag/dev-2026-05)
 
 Tested on Linux and MacOS.
 

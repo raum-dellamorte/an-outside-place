@@ -57,8 +57,8 @@ msg_on_last_page :: proc(msgs: ^MsgSystem) -> bool {
 rebuild_page_idcs :: proc(msgs: ^MsgSystem) {
   for i in 0..<msgs.page_len { msgs.page_list[i] = -1 }
   p := ((msgs.last - msgs.ptr) %% msgs.max_lines)
-  p = math.min(p, msgs.page_len)
-  for i in 0..<p {
+  p = math.min(p, msgs.page_len - 1)
+  for i in 0..=p {
     msgs.page_list[i] = ((msgs.ptr + i) %% msgs.max_lines)
   }
 }

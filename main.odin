@@ -142,20 +142,15 @@ draw_gui :: proc(ctx: ^GameContext) {
   x := ww - dlg_w - 10.0
   y := wh - dlg_h - 10.0
   dlg_bg := rl.Rectangle { x = x, y = y, width = dlg_w, height = dlg_h }
+  txt_x: i32 = auto_cast dlg_bg.x + 10
+  txt_y_top: i32 = auto_cast dlg_bg.y + 10
   rl.DrawRectangleRounded(dlg_bg, .15, 5, { 100, 100, 100, 190 } )
-  // First we need text and it needs to be accessable from GameContext
-  // maybe draw text into a framebuffer and show the bottom of it by default to allow for scrolling.
-  
-  i : i32 = 0
-  for line in msg_page_lines(&ctx.msg_system) {
-    // pos := msg_ptr_pos(&ctx.msg_system) 
-    // if pos == .Empty || (pos == .Alpha && i != 0) { break }
-    rl.DrawText(rl.TextFormat("%s", msg_read_line(&ctx.msg_system, line)), auto_cast dlg_bg.x + 10, auto_cast dlg_bg.y + 10 + (i * 25), 20, rl.WHITE)
-    // msg_next(&ctx.msg_system)
-    i += 1
-    // if i == 10 { break }
+  // Odin is `for value, index in array ...` and not index, value
+  for line, i in msg_page_lines(&ctx.msg_system) {
+    txt := msg_read_line(&ctx.msg_system, line)
+    txt_y := txt_y_top + (cast(i32)i * 25)
+    rl.DrawText(rl.TextFormat("%s", txt), txt_x, txt_y, 20, rl.WHITE)
   }
-  // for r := i; r > 0; r -= 1 { msg_prev(&ctx.msg_system) }
 }
 
 draw_world :: proc(ctx: ^GameContext) {
@@ -311,7 +306,9 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
               msg_add(&ctx.msg_system, "You were defeated by", entity.name)
               msg_add(&ctx.msg_system, "YOU DIED!")
             } else {
+              // println("defeat:\n",&ctx.msg_system._data)
               msg_add(&ctx.msg_system, action_focus.name, "has been defeated by", entity.name,"!")
+              msg_add(&ctx.msg_system, "<--+===+-->")
             }
             //
             // entity.action_timer.seconds = 0 // maybe???
