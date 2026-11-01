@@ -85,7 +85,13 @@ main :: proc() {
         // Check Collision
         check_for_collisions(ctx)
       } else { // In Combat!
+        combat_menu(ctx)
         process_combat_tic(ctx)
+      }
+      // Check user input
+      switch {
+      case rl.IsKeyPressed(.T) : { ctx^.should_draw.combat_log = !ctx.should_draw.combat_log; }
+      case rl.IsKeyPressed(.TAB) : { ctx^.should_draw.combat_menu = !ctx.should_draw.combat_menu; }
       }
       // if mouse is inside combat log bounds
       // check for and apply scrolling
@@ -146,6 +152,7 @@ draw_gui :: proc(ctx: ^GameContext) {
   rl.DrawText(rl.TextFormat("FPS: % 6.02f", ctx.fps), 50, 50, 20, rl.RED)
   // player := &ctx.world[get_active_player(ctx)]
   draw_combat_log(ctx)
+  draw_combat_menu(ctx)
 }
 
 draw_world :: proc(ctx: ^GameContext) {
@@ -190,6 +197,7 @@ check_for_collisions :: proc(ctx: ^GameContext) {
           player.actions[0].focus = u32(i)
           append(&ctx.combatants, u32(0), u32(i)) // fixme: need to potentially add multiple combatants
         }
+        ctx^.should_draw.combat_log = true
         break
       }
     }
@@ -214,6 +222,12 @@ cam_follow_world_target :: proc(ctx: ^GameContext) {
   if target != nil {
     move_cam(&ctx.studio.camera, target)
   }
+}
+
+combat_menu :: proc(ctx: ^GameContext) {
+  action_list := ActionList
+  ctx := ctx
+  
 }
 
 process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!

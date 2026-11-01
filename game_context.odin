@@ -13,14 +13,17 @@ make_game_context :: proc() -> GameContext {
   studio := make_studio()
   msg_system := make_msg_system(500, 50, 10)
   combat_log := new_combat_log()
+  combat_menu := new_combat_menu()
   combatants := make([dynamic]u32, 0, 50)
   prev_calc_times := [120]f64{0..<120 = 60.0}
   prev_draw_times := [120]f64{0..<120 = 60.0}
   return GameContext{
     world = world,
     studio = studio,
+    should_draw = {},
     msg_system = msg_system,
     combat_log = combat_log,
+    combat_menu = combat_menu,
     combatants = combatants,
     prev_calc_times = prev_calc_times,
     calc_time_ptr = 0,
@@ -133,8 +136,10 @@ delete_world :: proc(world: WorldEnvSOA) {
 GameContext :: struct {
   world: WorldEnvSOA,
   studio: Studio,
+  should_draw: ShouldDraw,
   msg_system: MsgSystem,
-  combat_log: CombatLog,
+  combat_log: UiWindow,
+  combat_menu: UiWindow,
   combatants: [dynamic]u32,
   prev_calc_times: [120]f64,
   calc_time_ptr: int,
@@ -147,6 +152,11 @@ GameContext :: struct {
   tic_counter: u64,
   
   // I'm sure there will be other things to keep track of
+}
+
+ShouldDraw :: struct {
+  combat_log: bool,
+  combat_menu: bool,
 }
 
 WorldEnvSOA :: #soa[dynamic]WorldEnvEntity

@@ -6,10 +6,12 @@ import rl "vendor:raylib"
 
 COMBAT_LOG_W :: 600.0
 COMBAT_LOG_H :: 260.0
+COMBAT_MENU_W :: 500.0
+COMBAT_MENU_H :: 260.0
 
 // procs
 
-new_combat_log :: proc() -> CombatLog {
+new_combat_log :: proc() -> UiWindow {
   win_w := cast(f32)rl.GetScreenWidth()
   win_h := cast(f32)rl.GetScreenHeight()
   bounds := rl.Rectangle {
@@ -18,7 +20,7 @@ new_combat_log :: proc() -> CombatLog {
     width = COMBAT_LOG_W,
     height = COMBAT_LOG_H,
   }
-  return CombatLog {
+  return UiWindow {
     win_w = win_w,
     win_h = win_h,
     bounds = bounds,
@@ -31,8 +33,31 @@ new_combat_log :: proc() -> CombatLog {
   }
 }
 
+new_combat_menu :: proc() -> UiWindow {
+  win_w := cast(f32)rl.GetScreenWidth()
+  win_h := cast(f32)rl.GetScreenHeight()
+  bounds := rl.Rectangle {
+    x = 10.0,
+    y = win_h - COMBAT_MENU_H - 10.0,
+    width = COMBAT_MENU_W,
+    height = COMBAT_MENU_H,
+  }
+  return UiWindow {
+    win_w = win_w,
+    win_h = win_h,
+    bounds = bounds,
+    txt_bounds = rl.Rectangle {
+      x = bounds.x + 10.0,
+      y = bounds.y + 10.0,
+      width = bounds.width - 20.0,
+      height = bounds.width - 20.0,
+    },
+  }
+}
+
 draw_combat_log :: proc(ctx: ^GameContext) {
-  cl : ^CombatLog = &ctx.combat_log
+  if !ctx.should_draw.combat_log { return; }
+  cl : ^UiWindow = &ctx.combat_log
   rl.DrawRectangleRounded(cl.bounds, .15, 5, { 100, 100, 100, 190 } )
   // Odin is `for value, index in array ...` and not index, value
   for line, i in msg_page_lines(&ctx.msg_system) {
@@ -42,7 +67,14 @@ draw_combat_log :: proc(ctx: ^GameContext) {
   }
 }
 
-update_combat_log_screen_coords :: proc(cl: ^CombatLog) {
+draw_combat_menu :: proc(ctx: ^GameContext) {
+  if !ctx.should_draw.combat_menu { return; }
+  cm: ^UiWindow = &ctx.combat_menu
+  rl.DrawRectangleRounded(cm.bounds, .15, 5, { 100, 100, 100, 190 } )
+  // 
+}
+
+update_combat_log_screen_coords :: proc(cl: ^UiWindow) {
   cl.win_w = cast(f32)rl.GetScreenWidth()
   cl.win_h = cast(f32)rl.GetScreenHeight()
   cl.bounds.x = cl.win_w - cl.bounds.width - 10.0
@@ -51,7 +83,7 @@ update_combat_log_screen_coords :: proc(cl: ^CombatLog) {
   cl.txt_bounds.y = cl.bounds.y + 10.0
 }
 
-CombatLog :: struct {
+UiWindow :: struct {
   win_w: f32,
   win_h: f32,
   bounds: rl.Rectangle,
