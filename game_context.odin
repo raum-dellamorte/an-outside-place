@@ -20,7 +20,7 @@ make_game_context :: proc() -> GameContext {
   return GameContext{
     world = world,
     studio = studio,
-    should_draw = {},
+    should = {},
     msg_system = msg_system,
     combat_log = combat_log,
     combat_menu = combat_menu,
@@ -136,7 +136,11 @@ delete_world :: proc(world: WorldEnvSOA) {
 GameContext :: struct {
   world: WorldEnvSOA,
   studio: Studio,
-  should_draw: ShouldDraw,
+  should: struct {
+    draw_combat_log: bool,
+    draw_combat_menu: bool,
+    wait_for_player: bool,
+  },
   msg_system: MsgSystem,
   combat_log: UiWindow,
   combat_menu: UiWindow,
@@ -152,11 +156,6 @@ GameContext :: struct {
   tic_counter: u64,
   
   // I'm sure there will be other things to keep track of
-}
-
-ShouldDraw :: struct {
-  combat_log: bool,
-  combat_menu: bool,
 }
 
 WorldEnvSOA :: #soa[dynamic]WorldEnvEntity

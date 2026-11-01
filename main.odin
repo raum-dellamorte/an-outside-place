@@ -90,8 +90,8 @@ main :: proc() {
       }
       // Check user input
       switch {
-      case rl.IsKeyPressed(.T) : { ctx^.should_draw.combat_log = !ctx.should_draw.combat_log; }
-      case rl.IsKeyPressed(.TAB) : { ctx^.should_draw.combat_menu = !ctx.should_draw.combat_menu; }
+      case rl.IsKeyPressed(.T) : { ctx^.should.draw_combat_log = !ctx.should.draw_combat_log; }
+      case rl.IsKeyPressed(.TAB) : { ctx^.should.draw_combat_menu = !ctx.should.draw_combat_menu; }
       }
       // if mouse is inside combat log bounds
       // check for and apply scrolling
@@ -197,7 +197,7 @@ check_for_collisions :: proc(ctx: ^GameContext) {
           player.actions[0].focus = u32(i)
           append(&ctx.combatants, u32(0), u32(i)) // fixme: need to potentially add multiple combatants
         }
-        ctx^.should_draw.combat_log = true
+        ctx^.should.draw_combat_log = true
         break
       }
     }
