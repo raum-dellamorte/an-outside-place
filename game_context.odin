@@ -175,6 +175,7 @@ WorldEnvEntity :: struct {
   prev_pos: rl.Vector3 `json:"prev_pos"`,
   health: u32 `json:"health"`,
   actions: ActionTrackers `json:"actions"`,
+  max_action_slots: u32 `json:"max_action_slots"`,
 }
 
 ShaderSet :: struct {

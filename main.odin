@@ -231,12 +231,17 @@ combat_menu :: proc(ctx: ^GameContext) {
 }
 
 process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
+  if ctx.should.wait_for_player { return; }
   action_list := ActionList
   ctx := ctx
   fight_loop: for i in ctx.combatants {
     entity := &ctx.world[i]
     if !entity.is_alive { continue fight_loop }
-    action_loop: for &action_tracker in entity.actions {
+    if cast(u32)len(entity.actions) < entity.max_action_slots {
+      get_next_action(ctx, i)
+      if ctx.should.wait_for_player { return; }
+    }
+    action_loop: for &action_tracker, action_i in entity.actions {
       if entity.action_is_blocking != nil && entity.action_is_blocking != action_tracker.id {
         continue action_loop
       }
@@ -361,11 +366,14 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
             )
             action_tracker.timer.seconds += 1
           } else if action.cool == action_tracker.timer.seconds {
-            action_tracker.timer.stage = .Prep
+            action_tracker.timer.stage = .Complete
             action_tracker.timer.seconds = 0
           } else {
             action_tracker.timer.seconds += 1
           }
+          break stage_loop
+        case .Complete:
+          ordered_remove(&entity.actions, action_i)
           break stage_loop
         }
       }
@@ -387,6 +395,20 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
       clear(&ctx.combatants)
       break
     }
+  }
+}
+
+get_next_action :: proc(ctx: ^GameContext, entity_id: u32) {
+  entity := &ctx.world[entity_id]
+  if entity.is_player {
+    ctx^.should.wait_for_player = true
+    ctx^.should.draw_combat_menu = true
+  } else {
+    // At the moment, focus == 0 means that the player
+    // is the focus so not declaring the focus here
+    // inits the value at zero, and so we don't have
+    // to specify the focus yet.
+    append(&entity.actions, ActionTracker { id = 2 } )
   }
 }
 

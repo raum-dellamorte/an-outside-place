@@ -91,6 +91,7 @@ ActionStage :: enum {
   Perform,
   BlockingCooldown,
   Cooldown,
+  Complete,
 }
 
 ActionTimer :: struct {
