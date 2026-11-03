@@ -88,7 +88,7 @@ main :: proc() {
         combat_menu(ctx)
         process_combat_tic(ctx)
       }
-      // Check user input
+      // universal user input
       switch {
       case rl.IsKeyPressed(.T) : { ctx^.should.draw_combat_log = !ctx.should.draw_combat_log }
       case rl.IsKeyPressed(.TAB) : { ctx^.should.draw_combat_menu = !ctx.should.draw_combat_menu }
@@ -193,9 +193,11 @@ check_for_collisions :: proc(ctx: ^GameContext) {
         // println("Player Collided With", mob.pos)
         player^.pos = player.prev_pos
         if player.is_alive {
-          mob.actions[0].focus = 0 // 0 is the player atm
-          player.actions[0].focus = u32(i)
           append(&ctx.combatants, u32(0), u32(i)) // fixme: need to potentially add multiple combatants
+                                                  // maybe add_team_to_combatants(ctx, player)
+                                                  //       add_team_to_combatants(ctx, &mob)
+          select_first_target(ctx, &mob, .Enemy)
+          select_first_target(ctx, player, .Enemy)
         }
         ctx^.should.draw_combat_log = true
         break
@@ -225,9 +227,30 @@ cam_follow_world_target :: proc(ctx: ^GameContext) {
 }
 
 combat_menu :: proc(ctx: ^GameContext) {
+  if !ctx.should.wait_for_player { return }
   action_list := ActionList
   ctx := ctx
-  
+  // Need a player menu struct in the GameContext.
+  // Use the switch statement to manipulate the state
+  // of the menu.
+  switch get_menu_input() {
+  case .Up:
+  case .Dn:
+  case .Lt:
+  case .Rt:
+  case .Select:
+    // If the selected thing is an action, add that action
+    // to the player's action slots.
+    // If it's a submenu, enter the submenu.
+    // Temporarily, we can just assign Sword Attack and
+    // stop displaying the menu.
+    player := &ctx.world[0]
+    select_first_target(ctx, player, .Enemy)
+    ctx.should.draw_combat_menu = false
+    ctx.should.wait_for_player = false
+  case .Cancel:
+  case .NoOp:
+  }
 }
 
 process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
@@ -237,11 +260,11 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
   fight_loop: for i in ctx.combatants {
     entity := &ctx.world[i]
     if !entity.is_alive { continue fight_loop }
-    if cast(u32)len(entity.actions) < entity.max_action_slots {
-      get_next_action(ctx, i)
-      if ctx.should.wait_for_player { return; }
+    if cast(u32)len(entity.action_slots) < entity.max_action_slots {
+      get_next_action(ctx, entity)
+      if ctx.should.wait_for_player { return }
     }
-    action_loop: for &action_tracker, action_i in entity.actions {
+    action_loop: for &action_tracker, action_i in entity.action_slots {
       if entity.action_is_blocking != nil && entity.action_is_blocking != action_tracker.id {
         continue action_loop
       }
@@ -373,7 +396,7 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
           }
           break stage_loop
         case .Complete:
-          ordered_remove(&entity.actions, action_i)
+          ordered_remove(&entity.action_slots, action_i)
           break stage_loop
         }
       }
@@ -398,18 +421,72 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
   }
 }
 
-get_next_action :: proc(ctx: ^GameContext, entity_id: u32) {
-  entity := &ctx.world[entity_id]
+get_next_action :: proc(ctx: ^GameContext, entity: #soa ^WorldEnvSOA) {
   if entity.is_player {
     ctx^.should.wait_for_player = true
     ctx^.should.draw_combat_menu = true
+    append(&entity.action_slots, ActionTracker { id = 1, focus = get_current_target(ctx,entity) } )
   } else {
     // At the moment, focus == 0 means that the player
     // is the focus so not declaring the focus here
     // inits the value at zero, and so we don't have
     // to specify the focus yet.
-    append(&entity.actions, ActionTracker { id = 2 } )
+    append(&entity.action_slots, ActionTracker { id = 2, focus = get_current_target(ctx,entity) } )
   }
+}
+
+get_current_target :: proc(ctx: ^GameContext, entity: #soa ^WorldEnvSOA) -> u32 {
+  return ctx.combatants[entity.current_target] // fixme: add validation checking
+}
+
+select_first_target :: proc(ctx: ^GameContext, entity: #soa ^WorldEnvSOA, target_type: TargetType) {
+  println("select_first_target: combatants ", ctx.combatants[:])
+  for target, i in ctx.combatants {
+    switch target_type {
+    case .All:
+      entity^.current_target = cast(u32)i
+      return
+    case .Enemy:
+      if ctx.world[target].team != entity.team {
+        entity^.current_target = cast(u32)i
+        println("select_first_target: target ", i, target)
+        return
+      }
+    case .Team:
+      if ctx.world[target].team == entity.team {
+        entity^.current_target = cast(u32)i
+        return
+      }
+    }
+  }
+  println("select_first_target: no target")
+  return
+}
+
+select_next_target :: proc(ctx: ^GameContext, entity: #soa ^WorldEnvSOA, target_type: TargetType) {
+  team := entity.team
+  target := entity.current_target
+  l := cast(u32)len(ctx.combatants)
+  for _ in 0..<l {
+    target = (target + 1) % l 
+    target_ent := &ctx.world[target]
+    switch target_type {
+    case .All:
+      entity.current_target = target
+      return
+    case .Enemy:
+      if target_ent.team != team {
+        entity.current_target = target
+        return
+      }
+    case .Team:
+      if target_ent.team == team {
+        entity.current_target = target
+        return
+      }
+    }
+  }
+  return
 }
 
 write_calc_time :: proc(ctx: ^GameContext, end_of_last_frame: f64) -> f64 {

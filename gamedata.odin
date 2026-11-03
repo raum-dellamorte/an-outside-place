@@ -139,14 +139,14 @@ world_to_data :: proc(
 data_to_world :: proc(world: ^WorldEnvSOA, data: string) {
   indent_ctl(.ResetIndent)
   entity:WorldEnvEntity = {}
-  entity.actions = make_action_tracker_list()
+  entity.action_slots = make_action_tracker_list()
   before, ent, rem : = "", "", remove_comments(data)
   for ; len(rem) > 0 ; {
     before, ent, rem = three_strings(take_thru_matching(rem))
     read_data_into_struct(entity, ent)
     append_soa(world, entity)
     entity = WorldEnvEntity{}
-    entity.actions = make_action_tracker_list()
+    entity.action_slots = make_action_tracker_list()
   }
 }
 

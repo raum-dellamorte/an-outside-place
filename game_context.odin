@@ -122,8 +122,8 @@ Studio :: struct {
 
 delete_world :: proc(world: WorldEnvSOA) {
   for &thing in world {
-    if thing.actions != nil {
-      actions := thing.actions
+    if thing.action_slots != nil {
+      actions := thing.action_slots
       // thing.actions = nil
       delete(actions)
     }
@@ -174,8 +174,14 @@ WorldEnvEntity :: struct {
   rot: rl.Vector3 `json:"rot"`,
   prev_pos: rl.Vector3 `json:"prev_pos"`,
   health: u32 `json:"health"`,
-  actions: ActionTrackers `json:"actions"`,
+  team: u32 `json:"team"`, 
+  action_slots: ActionTrackers `json:"action_slots"`,
   max_action_slots: u32 `json:"max_action_slots"`,
+  current_target: u32 `json:"current_target"`,
+}
+
+TargetType :: enum {
+  All, Enemy, Team,
 }
 
 ShaderSet :: struct {

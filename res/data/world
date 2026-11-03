@@ -13,17 +13,8 @@ Entity{
     0,0,0,
   ]
   health: 100
+  team: 0
   # action_is_blocking: 1
-  actions: [
-    ActionTracker{
-      id: 1
-      focus: 0
-      timer: ActionTimer{
-        seconds: 0
-        stage: Prep
-      }
-    }
-  ]
   max_action_slots: 1
   Props: {
     is_cam_target,is_player,is_alive,
@@ -35,7 +26,7 @@ Entity{
   pos: [ 10,0,-5, ]
   rot: [ 0,0,0, ]
   health: 30
-  actions: [ ActionTracker{ id: 2 } ]
+  team: 1
   max_action_slots: 1
   Props: { is_mob,is_alive, }
 }
@@ -44,7 +35,7 @@ Entity{
   color: [ 0,228,48,255, ]
   pos: [ 4,0,-3, ]
   health: 50
-  actions: [ ActionTracker{ id: 2 } ]
+  team: 1
   max_action_slots: 1
   Props: { is_mob,is_alive, }
 }
@@ -53,7 +44,7 @@ Entity{
   color: [ 112,31,126,255, ]
   pos: [ -8,0,2, ]
   health: 70
-  actions: [ ActionTracker{ id: 2 } ]
+  team: 1
   max_action_slots: 1
   Props: { is_mob,is_alive, }
 }
@@ -62,7 +53,7 @@ Entity{
   color: [ 0,221,141,55, ]
   pos: [ 20,0,-8, ]
   health: 10
-  actions: [ ActionTracker{ id: 2 } ]
+  team: 1
   max_action_slots: 1
   Props: { is_mob,is_alive, }
 }
@@ -72,7 +63,7 @@ Entity{
   pos: [ 4,0,-6, ]
   rot: [ 0,0,0, ]
   health: 30
-  actions: [ ActionTracker{ id: 2 } ]
+  team: 1
   max_action_slots: 1
   Props: { is_mob,is_alive, }
 }

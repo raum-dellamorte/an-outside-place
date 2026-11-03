@@ -8,6 +8,11 @@ Direction :: enum{
   Dn, DnLt, DnRt,
   NoOp,
 }
+MenuInput :: enum{
+  Up, Dn, Lt, Rt,
+  Select, Cancel,
+  NoOp,
+}
 Rotation :: enum{
   RotLt, RotRt,
   NoOp,
@@ -44,6 +49,24 @@ get_rotation :: proc() -> Rotation {
   case rl.IsKeyDown(.Q) && rl.IsKeyDown(.E): return .NoOp
   case rl.IsKeyDown(.Q): return .RotLt
   case rl.IsKeyDown(.E): return .RotRt
+  }
+  return .NoOp
+}
+
+get_menu_input :: proc() -> MenuInput {
+  switch {
+  case rl.IsKeyPressed(.W) || rl.IsKeyPressed(.UP):
+    return .Up
+  case rl.IsKeyPressed(.S) || rl.IsKeyPressed(.DOWN):
+    return .Dn
+  case rl.IsKeyPressed(.A) || rl.IsKeyPressed(.LEFT):
+    return .Lt
+  case rl.IsKeyPressed(.D) || rl.IsKeyPressed(.RIGHT):
+    return .Rt
+  case rl.IsKeyPressed(.E) || rl.IsKeyPressed(.ENTER):
+    return .Select
+  case rl.IsKeyPressed(.Q) || rl.IsKeyPressed(.ESCAPE) || rl.IsKeyPressed(.BACKSPACE):
+    return .Cancel
   }
   return .NoOp
 }
