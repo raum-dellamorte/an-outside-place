@@ -140,7 +140,7 @@ _str_limiter :: proc(s: string, max_len: int, alloc: mem.Allocator) -> []string 
   words := strings.split(s, " ", alloc)
   defer delete(words, alloc)
   out := make([dynamic]string, 0, (len(s) * 4) / max_len, alloc)
-  temp := make([]u8, max_len, alloc);  
+  temp := make([]u8, max_len, alloc)  
   mem.set(raw_data(temp), ' ', max_len)
   defer {
     mem.zero(raw_data(temp), max_len)

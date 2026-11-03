@@ -90,12 +90,12 @@ main :: proc() {
       }
       // Check user input
       switch {
-      case rl.IsKeyPressed(.T) : { ctx^.should.draw_combat_log = !ctx.should.draw_combat_log; }
-      case rl.IsKeyPressed(.TAB) : { ctx^.should.draw_combat_menu = !ctx.should.draw_combat_menu; }
+      case rl.IsKeyPressed(.T) : { ctx^.should.draw_combat_log = !ctx.should.draw_combat_log }
+      case rl.IsKeyPressed(.TAB) : { ctx^.should.draw_combat_menu = !ctx.should.draw_combat_menu }
       }
       // if mouse is inside combat log bounds
       // check for and apply scrolling
-      mouse_pos := rl.GetMousePosition();
+      mouse_pos := rl.GetMousePosition()
       if rl.CheckCollisionPointRec(mouse_pos, ctx.combat_log.bounds) {
         autoscroll = false // don't autoscroll when the mouse is in the combat_log
         wheel := rl.GetMouseWheelMove()
@@ -231,7 +231,7 @@ combat_menu :: proc(ctx: ^GameContext) {
 }
 
 process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
-  if ctx.should.wait_for_player { return; }
+  if ctx.should.wait_for_player { return }
   action_list := ActionList
   ctx := ctx
   fight_loop: for i in ctx.combatants {

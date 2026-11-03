@@ -56,7 +56,7 @@ new_combat_menu :: proc() -> UiWindow {
 }
 
 draw_combat_log :: proc(ctx: ^GameContext) {
-  if !ctx.should.draw_combat_log { return; }
+  if !ctx.should.draw_combat_log { return }
   cl : ^UiWindow = &ctx.combat_log
   rl.DrawRectangleRounded(cl.bounds, .15, 5, { 100, 100, 100, 190 } )
   // Odin is `for value, index in array ...` and not index, value
@@ -68,7 +68,7 @@ draw_combat_log :: proc(ctx: ^GameContext) {
 }
 
 draw_combat_menu :: proc(ctx: ^GameContext) {
-  if !ctx.should.draw_combat_menu { return; }
+  if !ctx.should.draw_combat_menu { return }
   cm: ^UiWindow = &ctx.combat_menu
   rl.DrawRectangleRounded(cm.bounds, .15, 5, { 100, 100, 100, 190 } )
   // 
