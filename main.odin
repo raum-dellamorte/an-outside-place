@@ -403,21 +403,39 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
     }
   }
   // Bring out your dead
+  player := &ctx.world[0]
+  combat_ended := false
   for i := 0; i < len(ctx.combatants); i += 1 {
     entity := &ctx.world[ctx.combatants[i]]
     if !entity.is_alive {
+      clear(&entity.action_slots)
       if entity.is_player {
         clear(&ctx.combatants)
         break
       } else {
+        flush: for {
+          if j, ok := get_action_slot_from_focus(&player.action_slots, ctx.combatants[i]); ok {
+            unordered_remove(&player.action_slots, j)
+          } else { break flush }
+        }
         ordered_remove(&ctx.combatants, i)
         i -= 1
       }
     }
     if len(ctx.combatants) < 2 {
-      clear(&ctx.combatants)
+      // in the future we need to check if only allies remain alive, unsurrendered.
+      // it might be fun to have an ally surrender as a distraction? maybe taking them prisoner
+      // takes an enemy's focus off the battle? If you continue to aggress, depending on the
+      // temperment or ruthlessness of the enemy, they'll either use the surrendered ally as a
+      // hostage or leave them locked up to go fight, giving the ally a chance to pick the lock
+      // and escape. Too much ambition...
+      combat_ended = true;
       break
     }
+  }
+  if combat_ended {
+    clear(&player.action_slots)
+    clear(&ctx.combatants)
   }
 }
 
@@ -437,6 +455,13 @@ select_next_action :: proc(ctx: ^GameContext, entity: #soa ^WorldEnvSOA) {
 
 get_current_target :: proc(ctx: ^GameContext, entity: #soa ^WorldEnvSOA) -> u32 {
   return ctx.combatants[entity.current_target] // fixme: add validation checking
+}
+
+get_action_slot_from_focus :: proc(action_slots: ^ActionTrackers, focus_id: u32) -> (int, bool) {
+  #reverse for action, i in action_slots {
+    if action.focus == focus_id { return i, true }
+  }
+  return -1, false
 }
 
 select_first_target :: proc(ctx: ^GameContext, entity: #soa ^WorldEnvSOA, target_type: TargetType) {
