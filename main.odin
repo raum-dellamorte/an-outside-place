@@ -261,7 +261,7 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
     entity := &ctx.world[i]
     if !entity.is_alive { continue fight_loop }
     if cast(u32)len(entity.action_slots) < entity.max_action_slots {
-      get_next_action(ctx, entity)
+      select_next_action(ctx, entity)
       if ctx.should.wait_for_player { return }
     }
     action_loop: for &action_tracker, action_i in entity.action_slots {
@@ -421,7 +421,7 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
   }
 }
 
-get_next_action :: proc(ctx: ^GameContext, entity: #soa ^WorldEnvSOA) {
+select_next_action :: proc(ctx: ^GameContext, entity: #soa ^WorldEnvSOA) {
   if entity.is_player {
     ctx^.should.wait_for_player = true
     ctx^.should.draw_combat_menu = true
