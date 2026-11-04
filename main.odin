@@ -88,6 +88,13 @@ main :: proc() {
         combat_menu(ctx)
         process_combat_tic(ctx)
       }
+      for &thing in ctx.world {
+        if !thing.is_alive && thing.color.a > 25 {
+          r := thing.color.a - 25
+          s : u8 = 4
+          thing.color.a -= r > s ? s : 1
+        }
+      }
       // universal user input
       switch {
       case rl.IsKeyPressed(.T) : { ctx^.should.draw_combat_log = !ctx.should.draw_combat_log }
