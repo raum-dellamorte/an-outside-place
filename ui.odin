@@ -72,6 +72,11 @@ draw_combat_menu :: proc(ctx: ^GameContext) {
   cm: ^UiWindow = &ctx.combat_menu
   rl.DrawRectangleRounded(cm.bounds, .15, 5, { 100, 100, 100, 190 } )
   // 
+  {
+    txt := "Sword Attack"
+    txt_y := i32(cm.txt_bounds.y) //  + (cast(i32)i * 25)
+    rl.DrawText(rl.TextFormat("%s", txt), i32(cm.txt_bounds.x), txt_y, 20, rl.PURPLE)
+  }
 }
 
 update_combat_log_screen_coords :: proc(cl: ^UiWindow) {
