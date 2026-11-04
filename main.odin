@@ -440,7 +440,7 @@ get_current_target :: proc(ctx: ^GameContext, entity: #soa ^WorldEnvSOA) -> u32 
 }
 
 select_first_target :: proc(ctx: ^GameContext, entity: #soa ^WorldEnvSOA, target_type: TargetType) {
-  println("select_first_target: combatants ", ctx.combatants[:])
+  // println("select_first_target: combatants ", ctx.combatants[:])
   for target, i in ctx.combatants {
     switch target_type {
     case .All:
@@ -449,7 +449,7 @@ select_first_target :: proc(ctx: ^GameContext, entity: #soa ^WorldEnvSOA, target
     case .Enemy:
       if ctx.world[target].team != entity.team {
         entity^.current_target = cast(u32)i
-        println("select_first_target: target ", i, target)
+        // println("select_first_target: target ", i, target)
         return
       }
     case .Team:
@@ -459,7 +459,7 @@ select_first_target :: proc(ctx: ^GameContext, entity: #soa ^WorldEnvSOA, target
       }
     }
   }
-  println("select_first_target: no target")
+  // println("select_first_target: no target")
   return
 }
 
