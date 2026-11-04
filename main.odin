@@ -332,32 +332,31 @@ process_combat_tic :: proc(ctx: ^GameContext) { // In Combat!
             action_tracker.timer.seconds = 0
             continue stage_loop
           }
-          damage_this_tic := action.action.base_damage / action.perform
-          if action.perform - action_tracker.timer.seconds == 1 {
-            damage_this_tic += (action.action.base_damage % damage_this_tic)
-          }
-          if action_focus.health <= damage_this_tic {
-            action_focus.health = 0
-            action_focus.is_alive = false
-            if action_focus.is_player {
-              msg_add(&ctx.msg_system, "You were defeated by", entity.name)
-              msg_add(&ctx.msg_system, "YOU DIED!")
-            } else {
-              // println("defeat:\n",&ctx.msg_system._data)
-              msg_add(&ctx.msg_system, action_focus.name, "has been defeated by", entity.name,"!")
-              msg_add(&ctx.msg_system, "<--+===+-->")
+          if action_focus.is_alive {
+            damage_this_tic := action.action.base_damage / action.perform
+            if action.perform - action_tracker.timer.seconds == 1 {
+              damage_this_tic += (action.action.base_damage % damage_this_tic)
             }
-            //
-            // entity.action_timer.seconds = 0 // maybe???
-            break fight_loop
-          } else {
-            action_focus.health -= damage_this_tic
-            msg_add(&ctx.msg_system,
-              action_focus.name,
-              "took", damage_this_tic,"damage.")
-            msg_add(&ctx.msg_system,
-              action_focus.name,"Health:", action_focus.health, ":",
-            )
+            if action_focus.health <= damage_this_tic {
+              action_focus.health = 0
+              action_focus.is_alive = false
+              if action_focus.is_player {
+                msg_add(&ctx.msg_system, "You were defeated by", entity.name)
+                msg_add(&ctx.msg_system, "YOU DIED!")
+              } else {
+                // println("defeat:\n",&ctx.msg_system._data)
+                msg_add(&ctx.msg_system, action_focus.name, "has been defeated by", entity.name,"!")
+                msg_add(&ctx.msg_system, "<--+===+-->")
+              }
+            } else {
+              action_focus.health -= damage_this_tic
+              msg_add(&ctx.msg_system,
+                action_focus.name,
+                "took", damage_this_tic,"damage.")
+              msg_add(&ctx.msg_system,
+                action_focus.name,"Health:", action_focus.health, ":",
+              )
+            }
           }
           action_tracker.timer.seconds += 1
           break stage_loop
