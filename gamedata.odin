@@ -66,6 +66,11 @@ world_to_data :: proc(
         val := struct_field_value(thing, fld).(Maybe(u32)).? or_continue
         iostr_indent(w)
         wprintfln(w, "%v: %v", fld.name, val)
+      case fld.type == type_info_of(f32):
+        val := struct_field_value(thing, fld).(f32)
+        if val == 0 { continue }
+        iostr_indent(w)
+        wprintfln(w, "%v: %v", fld.name, val)
       case is_array(fld.type): // fld.type == type_info_of(rl.Vector3):
         a_ptr := rawptr(uintptr(any(thing).data) + fld.offset)
         iostr_indent(w)
@@ -191,6 +196,14 @@ read_data_into_struct :: proc(strct: any, data: string) {
         println("parse_int failed:", fld_parse.data)
       }
       // printfln("Did we write? entity.%v = %v", fld_parse.res, struct_field_value_by_name(strct, fld_parse.res).(u32))
+    case Type_Info_Float:
+      process_parse_res(&fld_parse, .ToNewline)
+      value, ok := parse_f64(strip_string(fld_parse.data))
+      if ok {
+        write_struct_float(strct, fld.offset, value, fld.type.size)
+      } else {
+        println("parse_f64 failed:", fld_parse.data)
+      }
     case Type_Info_Union:
       // unfinished: currently supports Maybe of Integer types only.
       // no other Unions or non-integer Maybe
@@ -548,5 +561,4 @@ println_max :: proc(labl: string, s: string, max_len: int, sep := ": ") {
   }
   println(labl, out, sep = sep)
 }
-
 

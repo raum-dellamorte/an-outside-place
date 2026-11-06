@@ -172,6 +172,7 @@ WorldEnvEntity :: struct {
   color: rl.Color `json:"color"`,
   pos: rl.Vector3 `json:"pos"`,
   rot: rl.Vector3 `json:"rot"`,
+  y_rot: f32 `json:"y_rot"`,
   prev_pos: rl.Vector3 `json:"prev_pos"`,
   health: u32 `json:"health"`,
   team: u32 `json:"team"`, 
