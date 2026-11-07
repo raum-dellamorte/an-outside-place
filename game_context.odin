@@ -1,5 +1,8 @@
 package raumortis
 
+import str "core:strings"
+import "core:math"
+import la "core:math/linalg"
 import rl "vendor:raylib"
 
 // constants
@@ -14,12 +17,14 @@ make_game_context :: proc() -> GameContext {
   msg_system := make_msg_system(500, 50, 10)
   combat_log := new_combat_log()
   combat_menu := new_combat_menu()
+  models := make(map[string]rl.Model)
   combatants := make([dynamic]u32, 0, 50)
   prev_calc_times := [120]f64{0..<120 = 60.0}
   prev_draw_times := [120]f64{0..<120 = 60.0}
   return GameContext{
     world = world,
     studio = studio,
+    models = models,
     should = {},
     msg_system = msg_system,
     combat_log = combat_log,
@@ -29,6 +34,23 @@ make_game_context :: proc() -> GameContext {
     calc_time_ptr = 0,
     prev_draw_times = prev_draw_times,
     draw_time_ptr = 0,
+  }
+}
+
+load_models :: proc(ctx: ^GameContext) {
+  model_list := [?][2]string{{"res/models/skeleton_game_piece.glb", "skelpc"}}
+  quarter_rt := la.quaternion_angle_axis(
+    -math.TAU / 4.0,
+    [3]f32{0,1,0},
+  )
+  for &model_file in model_list {
+    model := rl.LoadModel(str.clone_to_cstring(model_file[0]))
+    model.transform = rl.QuaternionToMatrix(quaternion128(1) * quarter_rt)
+    ctx^.models[model_file[1]] = model
+  }
+  for &entity in ctx.world {
+    entity.model = &ctx.models[entity.model_name]
+    entity.rot = la.quaternion_angle_axis(entity.y_rot * f32(math.TAU),[3]f32{0,1,0})
   }
 }
 
@@ -80,6 +102,10 @@ make_studio :: proc() -> Studio { // maybe take a Config struct? and an alloc?
   return Studio {
     camera  = camera,
     shaders = shaders,
+    follow_drift = 12.0,
+    pan_drift = 18.0,
+    cam_above = 1.5,
+    cam_behind = 3.5,
   }
 }
 
@@ -98,26 +124,20 @@ make_shaders_list :: proc() -> [dynamic]ShaderSet {
 delete_game_context :: proc(game_context: GameContext) {
   ctx := game_context
   world := ctx.world
+  models := ctx.models
   combatants := ctx.combatants
   delete_msg_system(&ctx.msg_system)
+  delete_models(models)
   delete_studio(ctx.studio)
   delete(combatants)
   delete_world(world)
 }
 
-delete_studio :: proc(studio: Studio) {
-	_studio := studio
-	shaders := _studio.shaders
-	for _ in 0..<len(shaders) {
-    shader_set : ShaderSet = pop(&shaders)
-		rl.UnloadShader(shader_set.shader)
-	}
-	delete(shaders)
-	// delete_mat_helper(mat_helper)
-}
-Studio :: struct {
-  camera: rl.Camera3D,
-  shaders: [dynamic]ShaderSet,
+delete_models :: proc(models: map[string]rl.Model) {
+  _models := models
+  for _,model in _models {
+    rl.UnloadModel(model)
+  }
 }
 
 delete_world :: proc(world: WorldEnvSOA) {
@@ -136,6 +156,7 @@ delete_world :: proc(world: WorldEnvSOA) {
 GameContext :: struct {
   world: WorldEnvSOA,
   studio: Studio,
+  models: map[string]rl.Model,
   should: struct {
     draw_combat_log: bool,
     draw_combat_menu: bool,
@@ -162,6 +183,8 @@ WorldEnvSOA :: #soa[dynamic]WorldEnvEntity
   
 WorldEnvEntity :: struct {
   name: string `json:"name"`,
+  model_name: string `json:"model_name"`,
+  model: ^rl.Model,
   is_cam_target: bool `json:"is_cam_target"`,
   is_player: bool `json:"is_player"`,
   is_mob: bool `json:"is_mob"`,
@@ -171,7 +194,7 @@ WorldEnvEntity :: struct {
   action_is_blocking: Maybe(u32) `json:"action_is_blocking"`,
   color: rl.Color `json:"color"`,
   pos: rl.Vector3 `json:"pos"`,
-  rot: rl.Vector3 `json:"rot"`,
+  rot: rl.Quaternion `json:"rot"`,
   y_rot: f32 `json:"y_rot"`,
   prev_pos: rl.Vector3 `json:"prev_pos"`,
   health: u32 `json:"health"`,

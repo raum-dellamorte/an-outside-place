@@ -144,6 +144,7 @@ world_to_data :: proc(
 data_to_world :: proc(world: ^WorldEnvSOA, data: string) {
   indent_ctl(.ResetIndent)
   entity:WorldEnvEntity = {}
+  entity.rot = quaternion128(1)
   entity.action_slots = make_action_tracker_list()
   before, ent, rem : = "", "", remove_comments(data)
   for ; len(rem) > 0 ; {

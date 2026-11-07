@@ -1,7 +1,7 @@
 package raumortis
 
 import "core:fmt"
-// import "core:math/linalg"
+import la "core:math/linalg"
 // import "core:os"
 // import "core:slice"
 // import "core:strings"
@@ -17,6 +17,8 @@ print :: fmt.print
 printf :: fmt.printf
 println :: fmt.println
 printfln :: fmt.printfln
+
+DIAG :: f32(0.70710678118) // 1 / sqrt(2)
 
 main :: proc() {
   // Constants
@@ -34,6 +36,7 @@ main :: proc() {
   ctx := &_ctx
   world_file := #load("res/data/world", string)
   data_to_world(&ctx.world, world_file)
+  load_models(ctx)
   // For testing purposes, print out the world loaded from the world file
   save_data, err := world_to_data(ctx.world)
   if err == nil {
@@ -43,6 +46,7 @@ main :: proc() {
   // Pre-game setup
   player := &ctx.world[0]
   player_speed : f32 = 10.0
+  player_rot_speed : f32 = 2.0
   player_move_dist : f32 = player_speed / 60.0
   TIC : f64 : 1.0 / 60.0
   TIC_MIN_TIME :: TIC * 0.99
@@ -63,23 +67,39 @@ main :: proc() {
       }
       if len(ctx.combatants) == 0 {
         // Move "Player"
+        direction := [3]f32{}
+        step := player_speed / 60.0
         switch get_direction() {
         case .UpLt:
-          player^.pos.z -= player_move_dist / 2.0
-          player^.pos.x -= player_move_dist / 2.0
+          direction.z = -DIAG
+          direction.x = -DIAG
         case .UpRt:
-          player^.pos.z -= player_move_dist / 2.0
-          player^.pos.x += player_move_dist / 2.0
+          direction.z = -DIAG
+          direction.x = DIAG
         case .DnLt:
-          player^.pos.z += player_move_dist / 2.0
-          player^.pos.x -= player_move_dist / 2.0
+          direction.z = DIAG
+          direction.x = -DIAG
         case .DnRt:
-          player^.pos.z += player_move_dist / 2.0
-          player^.pos.x += player_move_dist / 2.0
-        case .Up: player^.pos.z -= player_move_dist
-        case .Dn: player^.pos.z += player_move_dist
-        case .Lt: player^.pos.x -= player_move_dist
-        case .Rt: player^.pos.x += player_move_dist
+          direction.z = DIAG
+          direction.x = DIAG
+        case .Up: direction.z = -1
+        case .Dn: direction.z = 1
+        case .Lt: direction.x = -1 
+        case .Rt: direction.x = 1
+        case .NoOp: {}
+        }
+        movement := la.quaternion_mul_vector3(
+          player.rot,
+          direction,
+        )
+        player.pos += movement * step
+        switch get_rotation() {
+        case .RotLt:
+          delta := la.quaternion_angle_axis(f32(1) * player_rot_speed * (1.0/60.0),[3]f32{0,1,0})
+          player^.rot = la.normalize(delta * player.rot)
+        case .RotRt:
+          delta := la.quaternion_angle_axis(f32(-1) * player_rot_speed * (1.0/60.0),[3]f32{0,1,0})
+          player^.rot = la.normalize(delta * player.rot)
         case .NoOp: {}
         }
         // Check Collision
@@ -164,22 +184,17 @@ draw_gui :: proc(ctx: ^GameContext) {
 
 draw_world :: proc(ctx: ^GameContext) {
   for &thing in ctx.world {
-    rl.DrawCubeV(thing.pos, {f32(1), f32(1), f32(1)}, thing.color)
+    // rl.DrawCubeV(thing.pos, {f32(1), f32(1), f32(1)}, thing.color)
+    transform := rl.Matrix(la.matrix4_from_trs(
+      thing.pos, thing.rot, [3]f32{1,1,1},
+    )) * thing.model^.transform
+    draw_model(thing.model,transform)
   }
 }
 
 get_active_player :: proc(ctx: ^GameContext) -> int {
   for thing, i in ctx.world {
     if thing.is_player {
-      return i
-    }
-  }
-  return -1 // fixme: this should probably return an error
-}
-
-get_cam_target :: proc(ctx: ^GameContext) -> int {
-  for thing, i in ctx.world {
-    if thing.is_cam_target {
       return i
     }
   }
@@ -210,26 +225,6 @@ check_for_collisions :: proc(ctx: ^GameContext) {
         break
       }
     }
-  }
-}
-
-move_cam :: proc(camera: ^rl.Camera3D, target: ^[3]f32) {
-  camera.position.x = target^.x
-  camera.position.y = target^.y + 2.0
-  camera.position.z = target^.z + 4.0
-  camera.target.x = target^.x
-  camera.target.y = target^.y
-  camera.target.z = target^.z
-}
-cam_follow_world_target :: proc(ctx: ^GameContext) {
-  target : ^[3]f32 = nil
-  for &thing in ctx.world {
-    if thing.is_cam_target {
-      target = &thing.pos
-    }
-  }
-  if target != nil {
-    move_cam(&ctx.studio.camera, target)
   }
 }
 

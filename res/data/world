@@ -1,5 +1,6 @@
 Entity{
   name: The Player
+  model_name: skelpc
   color: [
     200,100,120,255,
   ]
@@ -19,6 +20,7 @@ Entity{
 }
 Entity{
   name: Blue
+  model_name: skelpc
   color: [ 0,121,241,255, ]
   pos: [ 10,0,-5, ]
   y_rot: 0.5
@@ -29,6 +31,7 @@ Entity{
 }
 Entity{
   name: Green
+  model_name: skelpc
   color: [ 0,228,48,255, ]
   pos: [ 4,0,-3, ]
   y_rot: 0.25
@@ -39,6 +42,7 @@ Entity{
 }
 Entity{
   name: Purple
+  model_name: skelpc
   color: [ 112,31,126,255, ]
   pos: [ -8,0,2, ]
   y_rot: 0.45
@@ -49,6 +53,7 @@ Entity{
 }
 Entity{
   name: Dave
+  model_name: skelpc
   color: [ 0,221,141,55, ]
   pos: [ 20,0,-8, ]
   y_rot: 0.5
@@ -59,6 +64,7 @@ Entity{
 }
 Entity{
   name: Steve
+  model_name: skelpc
   color: [ 90,11,191,255, ]
   pos: [ 4,0,-6, ]
   y_rot: 0.55
